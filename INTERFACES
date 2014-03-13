@@ -1,10 +1,60 @@
-const unsigned W(8), WW(CLOG2(W)), L(8), LL(CLOG2(L)), N(32), LINE(16);
+const unsigned W(8), WW(CLOG2(W)), L(8), LL(CLOG2(L)), N(32),
+               R(32), RR(CLOG2(R)), LINE(16);
 
 enum Tstate {
   TS_USER, TS_DIVERGENT_BR, TS_PENDING_INT, TS_KERNEL, N_TSTATES
 };
 
-Core warp variables:
-  State
-  PC
-  Active mask
+const unsigned SS(CLOG2(N_TSTATES));
+
+Basic warp variables [warp]: State, PC, active mask
+
+typedef ag<STP("state"), bvec<SS>,
+        ag<STP("pc"), bvec<N>,
+        ag<STP("active"), bvec<W> > > > warp_t;
+
+Predicate read values [pval]: inst pred val, param pval 0, param pval 1
+
+typedef ag<STP("pmask"), bvec<L>,
+        ag<STP("pval0"), bvec<L>,
+        ag<STP("pval1"), bvec<L> > > > pval_t;
+
+Writeback predicate values [wbpval]: writeback mask, wb pred val, pred dest ID
+
+typedef ag<STP("mask"), bvec<L>,
+        ag<STP("val"), bvec<L>,
+        ag<STP("dest"), bvec<RR> > > > pwb_t;
+
+Register read values [rval]: rval0, rval1, rval2
+
+typedef ag<STP("val0"), vec<L, bvec<N> >,
+        ag<STP("val1"), vec<L, bvec<N> >,
+        ag<STP("val2"), vec<L, bvec<N> > > > > rval_t;
+
+Writeback register values [wbrval]: writeback mask, wb reg val, reg dest ID
+
+typedef ag<STP("mask"), bvec<L>,
+        ag<STP("val"), vec<L, bvec<N> >,
+        ag<STP("dest"), bvec<RR> > > > rwb_t;
+
+
+
+Sched->Fetch     - [warp]
+
+warp_t
+
+Fetch->Predicate - [warp], IR
+
+ag<STP("warp"), warp_t, ag<STP("ir"), bvec<N> > >
+
+Predicate->Reg   - [warp], IR, [pval]
+Reg->Dispatch    - [warp], IR, [pval], [rval]
+Dispatch->FU     - [warp], IR, [pval], [rval]
+FU->Sched        - [warp]
+FU->Register     - [wbrval]
+FU->Predicate    - [wbpval]
+
+This makes the functional unit interfaces:
+
+void Sched(flit_t<warp_t> out, flit_t<warp_t> in);
+void Fetch();
