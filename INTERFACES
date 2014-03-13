@@ -1,0 +1,10 @@
+const unsigned W(8), WW(CLOG2(W)), L(8), LL(CLOG2(L)), N(32), LINE(16);
+
+enum Tstate {
+  TS_USER, TS_DIVERGENT_BR, TS_PENDING_INT, TS_KERNEL, N_TSTATES
+};
+
+Core warp variables:
+  State
+  PC
+  Active mask
