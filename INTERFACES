@@ -41,20 +41,41 @@ typedef ag<STP("mask"), bvec<L>,
 
 Sched->Fetch     - [warp]
 
-warp_t
+typedef flit_t<warp_t> sched_fetch_t;
 
 Fetch->Predicate - [warp], IR
 
-ag<STP("warp"), warp_t, ag<STP("ir"), bvec<N> > >
+typedef flit_t<ag<STP("warp"), warp_t,
+               ag<STP("ir"), bvec<N> > > > fetch_pred_t;
 
 Predicate->Reg   - [warp], IR, [pval]
-Reg->Dispatch    - [warp], IR, [pval], [rval]
-Dispatch->FU     - [warp], IR, [pval], [rval]
-FU->Sched        - [warp]
-FU->Register     - [wbrval]
-FU->Predicate    - [wbpval]
 
-This makes the functional unit interfaces:
+typedef flit_t<ag<STP("warp"), warp_t,
+               ag<STP("ir"),   bvec<N>,
+               ag<STP("pval"), pval_t> > > > pred_reg_t;
 
-void Sched(flit_t<warp_t> out, flit_t<warp_t> in);
-void Fetch();
+Reg->Dispatch, Dispatch->FU    - [warp], IR, [pval], [rval]
+
+typedef flit_t<ag<STP("warp"), warp_t,
+               ag<STP("ir"), bvec<N>,
+               ag<STP("pval"), pval_t,
+               ag<STP("rval"), rval_t> > > > > reg_func_t;
+
+FU->Arbiter, Arbiter->Splitter - [warp], [wbrval], [wbpval]
+
+typedef flit_t<ag<STP("warp"), warp_t,
+               ag<STP("rwb"), rwb_t,
+               ag<STP("pwb"), pwb_t> > > > func_sched_t;
+
+Splitter->Register - [wbrval]
+
+typedef flit_t<rwb_t> splitter_reg_t;
+
+Splitter->Predicate - [wbpval]
+
+typedef flit_t<pwb_t> splitter_pred_t;
+
+Splitter->Sched - [warp]
+
+typedef flit_t<warp> splitter_sched_t;
+
