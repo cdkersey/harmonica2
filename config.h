@@ -1,6 +1,8 @@
 #ifndef HARMONICA_CONFIG_H
 #define HARMONICA_CONFIG_H
 
+#include <chdl/chdl.h>
+
 const unsigned W(8),     // Total warps
                L(8),     // Number of SIMD lanes
                N(32),    // Number of bits in a machine word
@@ -9,6 +11,6 @@ const unsigned W(8),     // Total warps
 
 // Doubled constants mean log base 2 of the corresponding constant. LL bits can
 // hold a lane ID, RR bits can uniquely identify a register.
-const unsigned WW(CLOG2(W)), RR(CLOG2(R)), LL(CLOG2(L));
+const unsigned WW(chdl::CLOG2(W)), RR(chdl::CLOG2(R)), LL(chdl::CLOG2(L));
 
 #endif

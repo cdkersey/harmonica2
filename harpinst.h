@@ -1,6 +1,8 @@
 #ifndef HARMONICA_HARPINST_H
 #define HARMONICA_HARPINST_H
 
+using namespace chdl; // TODO: this is downright naughty
+
 enum argclass {
   AC_NONE, AC_1REG, AC_2REG, AC_3REG, AC_3REGSRC, AC_1IMM, AC_2IMM, AC_3IMM,
   AC_3IMMSRC, AC_PREG_REG, AC_2PREG, AC_3PREG
