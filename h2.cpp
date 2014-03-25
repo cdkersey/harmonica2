@@ -23,6 +23,9 @@ void Execute(splitter_sched_t &out, reg_func_t &in);
 // Scheduler stage auxiliary functions
 void Starter(splitter_sched_t &out);
 
+// Generic auxiliary functions
+// //
+
 void Harmonica2() {
   HIERARCHY_ENTER();
 
@@ -64,6 +67,7 @@ void Sched(sched_fetch_t &out, splitter_sched_t &in) {
 }
 
 void Fetch(fetch_pred_t &out, sched_fetch_t &in) {
+  
 }
 
 void PredRegs(pred_reg_t &out, fetch_pred_t &in) {
