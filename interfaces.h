@@ -3,7 +3,7 @@
 
 #include <chdl/chdl.h>
 #include <chdl/ag.h>
-#include <chdl/net.h>
+q#include <chdl/net.h>
 
 #include "config.h"
 
