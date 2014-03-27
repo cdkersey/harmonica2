@@ -28,7 +28,8 @@ namespace chdl {
   // Writeback predicate values
   typedef ag<STP("mask"), bvec<L>,
           ag<STP("val"), bvec<L>,
-          ag<STP("dest"), bvec<RR> > > > pwb_t;
+          ag<STP("wid"), bvec<WW>, 
+          ag<STP("dest"), bvec<RR> > > > > pwb_t;
 
   // Register read values
   typedef ag<STP("val0"), vec<L, bvec<N> >,
@@ -38,7 +39,11 @@ namespace chdl {
   // Writeback register values
   typedef ag<STP("mask"), bvec<L>,
           ag<STP("val"), vec<L, bvec<N> >,
-          ag<STP("dest"), bvec<RR> > > > rwb_t;
+          ag<STP("wid"), bvec<WW>, 
+          ag<STP("dest"), bvec<RR>,
+          ag<STP("clone"), node,
+          ag<STP("clonesrc"), bvec<LL>,
+          ag<STP("clonedest"), bvec<LL> > > > > > > > rwb_t;
 
 
   // Sched->Fetch
