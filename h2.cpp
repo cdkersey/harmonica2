@@ -244,6 +244,9 @@ void Execute(splitter_sched_t &out, splitter_pred_t &pwb, splitter_reg_t &rwb,
   func_splitter_t fu_arbiter_out;
   Arbiter(fu_arbiter_out, ArbRR<N_FU>, fu_outputs);
 
+  TAP(fu_inputs);
+  TAP(fu_outputs);
+
   TAP(fu_router_in);
   TAP(fu_router_in_postbuf);
   TAP(fu_arbiter_out);
@@ -293,13 +296,16 @@ void RouteFunc(bvec<N_FU> &valid, const reg_func_int_t &in, node in_valid) {
 
 void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_ENTER();
-  node ready(_(out, "ready"));
-  _(in, "ready") = ready;
+  node ready(_(out, "ready")), full;
+  _(in, "ready") = ready || !full;
+
+  // TODO: is "full" defined correctly?
+  full = (Reg(full) && !ready) || Reg(!full && _(in, "valid"));
 
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
 
-  _(out, "valid") = Wreg(ready, _(in, "valid"));
-  _(_(out, "contents"), "warp") = Wreg(ready, _(_(in, "contents"), "warp"));
+  _(out, "valid") = Wreg(ready || !full, _(in, "valid"));
+  _(_(out, "contents"), "warp") = Wreg(ready || !full, _(_(in, "contents"), "warp"));
 
   _(_(_(out, "contents"), "rwb"), "mask") = Lit<L>(1); // TODO: fix this!
 
@@ -314,9 +320,10 @@ void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
       IF(inst.get_opcode() == Lit<6>(0x0a), rval0 + rval1).
       ELSE(Lit<N>(0));
 
-    _(_(_(out, "contents"), "rwb"), "val")[l] = Wreg(ready, out_val[l]);
+    _(_(_(out, "contents"), "rwb"), "val")[l] = Wreg(ready || !full, out_val[l]);
   }
 
+  tap("alu_full", full);
   tap("alu_out", out);
   tap("alu_in", in);
 
