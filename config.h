@@ -3,10 +3,10 @@
 
 #include <chdl/chdl.h>
 
-const unsigned W(8),        // Total warps
-               L(8),        // Number of SIMD lanes
+const unsigned W(4),        // Total warps
+               L(4),        // Number of SIMD lanes
                N(32),       // Number of bits in a machine word
-               R(32),       // Number of registers (and predicate registers)
+               R(8),        // Number of registers (and predicate registers)
                LINE(16),    // Words per cache line
                ROMSZ(4096); // Instruction ROM size
 

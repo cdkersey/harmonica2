@@ -23,7 +23,21 @@ void Execute(splitter_sched_t&, splitter_pred_t&, splitter_reg_t&, reg_func_t&);
 // Scheduler stage auxiliary functions
 void Starter(splitter_sched_t &out);
 
-// Generic auxiliary functions
+// Types of functional unit, padded to nearest power of two
+enum funcunit_type_t {
+  FU_ALU, FU_PLU, FU_MULT, FU_DIV, FU_LSU, FU_BRANCH, FU_PAD0, FU_PAD1, N_FU
+};
+
+// Functional Unit Routing Function
+void RouteFunc(bvec<N_FU> &valid, const reg_func_int_t &in, node in_valid);
+
+// Functional Units
+void Funcunit_alu(func_splitter_t &out, reg_func_t &in);
+void Funcunit_plu(func_splitter_t &out, reg_func_t &in);
+void Funcunit_mult(func_splitter_t &out, reg_func_t &in);
+void Funcuint_div(func_splitter_t &out, reg_func_t &in);
+void Funcunit_lsu(func_splitter_t &out, reg_func_t &in);
+void Funcunit_branch(func_splitter_t &out, reg_func_t &in);
 
 // Implementations
 void Harmonica2() {
@@ -44,9 +58,7 @@ void Harmonica2() {
   GpRegs(rx, pr, xr);
   Execute(xs, xp, xr, rx);
 
-  _(pr, "ready") = Lit(1); // TODO: remove this when we complete the cycle
-
-  TAP(sf); TAP(fp); TAP(pr); TAP(rx); TAP(xs);
+  TAP(sf); TAP(fp); TAP(pr); TAP(rx); TAP(xs); TAP(xp); TAP(xr);
 
   HIERARCHY_EXIT();
 }
@@ -73,6 +85,7 @@ void Sched(sched_fetch_t &out, splitter_sched_t &in) {
   Arbiter(buf_in, ArbUniq<2>, arb_in);
   TAP(starter_out);
   Buffer<WW>(out, buf_in);
+  TAP(buf_in); TAP(in);
   HIERARCHY_EXIT();
 }
 
@@ -168,8 +181,26 @@ void GpRegs(reg_func_t &out, pred_reg_t &in, splitter_reg_t &wb) {
     }
   }
 
+  node ready(_(out, "ready"));
+  bvec<WW> wid(_(_(_(in, "contents"), "warp"), "id"));
+
+  vec<L, bvec<N> > rval0, rval1, rval2;
+
   // Get the register values
-  // TODO: . . .
+  for (unsigned l = 0; l < L; ++l) {
+    rval0[l] = Mux(inst.get_rsrc0(), Mux(wid, regs)[l]);
+    rval1[l] = Mux(inst.get_rsrc1(), Mux(wid, regs)[l]);
+    rval2[l] = Mux(inst.get_rsrc2(), Mux(wid, regs)[l]);
+  }
+
+  _(in, "ready") = ready;
+  _(out, "valid") = Wreg(ready, _(in, "valid"));
+  _(_(out, "contents"), "warp") = Wreg(ready, _(_(in, "contents"), "warp"));
+  _(_(out, "contents"), "ir") = Wreg(ready, _(_(in, "contents"), "ir"));
+  _(_(out, "contents"), "pval") = Wreg(ready, _(_(in, "contents"), "pval"));
+  Flatten(_(_(_(out,"contents"),"rval"),"val0")) = Wreg(ready, Flatten(rval0));
+  Flatten(_(_(_(out,"contents"),"rval"),"val1")) = Wreg(ready, Flatten(rval1));
+  Flatten(_(_(_(out,"contents"),"rval"),"val2")) = Wreg(ready, Flatten(rval2));
 
   HIERARCHY_EXIT();
 }
@@ -177,6 +208,142 @@ void GpRegs(reg_func_t &out, pred_reg_t &in, splitter_reg_t &wb) {
 void Execute(splitter_sched_t &out, splitter_pred_t &pwb, splitter_reg_t &rwb,
              reg_func_t &in)
 {
+  HIERARCHY_ENTER();
+
+  // The input to the functional units includes pre-incremented program counter.
+  reg_func_t fu_router_in, fu_router_in_postbuf;
+  _(in, "ready") = _(fu_router_in, "ready");
+  _(fu_router_in, "valid") = _(in, "valid");
+  _(_(_(fu_router_in, "contents"), "warp"), "state")
+    = _(_(_(in, "contents"), "warp"), "state");
+  _(_(_(fu_router_in, "contents"), "warp"), "active")
+    = _(_(_(in, "contents"), "warp"), "active");
+  _(_(_(in, "contents"), "warp"), "id")
+    = _(_(_(fu_router_in, "contents"), "warp"), "id");
+  _(_(_(fu_router_in, "contents"), "warp"), "pc")
+    = _(_(_(in, "contents"), "warp"), "pc") + Lit<N>(N/8);
+  _(_(fu_router_in, "contents"), "ir") = _(_(in, "contents"), "ir");
+  _(_(fu_router_in, "contents"), "pval") = _(_(in, "contents"), "pval");
+  _(_(fu_router_in, "contents"), "rval") = _(_(in, "contents"), "rval");
+
+  vec<N_FU, reg_func_t> fu_inputs;
+  vec<N_FU, func_splitter_t> fu_outputs;
+
+  Buffer<1>(fu_router_in_postbuf, fu_router_in);
+
+  // TODO: 
+  Router(fu_inputs, RouteFunc, fu_router_in_postbuf);
+
+  Funcunit_alu(fu_outputs[FU_ALU], fu_inputs[FU_ALU]);
+  Funcunit_plu(fu_outputs[FU_PLU], fu_inputs[FU_PLU]);
+  Funcunit_mult(fu_outputs[FU_MULT], fu_inputs[FU_MULT]);
+  Funcuint_div(fu_outputs[FU_DIV], fu_inputs[FU_DIV]);
+  Funcunit_lsu(fu_outputs[FU_LSU], fu_inputs[FU_LSU]);
+  Funcunit_branch(fu_outputs[FU_BRANCH], fu_inputs[FU_BRANCH]);
+
+  func_splitter_t fu_arbiter_out;
+  Arbiter(fu_arbiter_out, ArbRR<N_FU>, fu_outputs);
+
+  TAP(fu_router_in);
+  TAP(fu_router_in_postbuf);
+  TAP(fu_arbiter_out);
+
+  // Now we assume the register/predicate writebacks are always ready
+  // TODO: Handle ready signal on register/predicate writeback signals
+  _(fu_arbiter_out, "ready") = _(out, "ready");
+
+  _(out, "valid") = _(fu_arbiter_out, "valid");
+  _(pwb, "valid") = _(fu_arbiter_out, "valid");
+  _(rwb, "valid") = _(fu_arbiter_out, "valid");
+  _(pwb, "contents") = _(_(fu_arbiter_out, "contents"), "pwb");
+  _(rwb, "contents") = _(_(fu_arbiter_out, "contents"), "rwb");
+  _(out, "contents") = _(_(fu_arbiter_out, "contents"), "warp"); 
+
+  HIERARCHY_EXIT();
+}
+
+void RouteFunc(bvec<N_FU> &valid, const reg_func_int_t &in, node in_valid) {
+  harpinst<N, RR, RR> inst(_(in, "ir"));
+
+  valid[FU_ALU] =
+    inst.get_opcode() == Lit<6>(0x25) || // ldi
+    inst.get_opcode() == Lit<6>(0x0a);   // add
+
+  valid[FU_PLU] =
+    inst.get_opcode() == Lit<6>(0x26) || // rtop
+    inst.get_opcode() == Lit<6>(0x27);   // andp
+
+  valid[FU_MULT] =
+    inst.get_opcode() == Lit<6>(0x0c) || // mul
+    inst.get_opcode() == Lit<6>(0x16);   // muli
+
+  valid[FU_DIV] =
+    inst.get_opcode() == Lit<6>(0x0d) || // div
+    inst.get_opcode() == Lit<6>(0x0e) || // mod
+    inst.get_opcode() == Lit<6>(0x17) || // divi
+    inst.get_opcode() == Lit<6>(0x18);   // modi
+
+  valid[FU_LSU] =
+    inst.get_opcode() == Lit<6>(0x23) || // ld
+    inst.get_opcode() == Lit<6>(0x24);   // st
+
+  valid[FU_BRANCH] =
+    inst.get_opcode() == Lit<6>(0x1d); // jmpi
+}
+
+void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
+  HIERARCHY_ENTER();
+  node ready(_(out, "ready"));
+  _(in, "ready") = ready;
+
+  harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
+
+  _(out, "valid") = Wreg(ready, _(in, "valid"));
+  _(_(out, "contents"), "warp") = Wreg(ready, _(_(in, "contents"), "warp"));
+
+  _(_(_(out, "contents"), "rwb"), "mask") = Lit<L>(1); // TODO: fix this!
+
+  vec<L, bvec<N> > out_val;
+
+  for (unsigned l = 0; l < L; ++l) {
+    bvec<N> rval0(_(_(_(in, "contents"), "rval"), "val0")[l]), 
+            rval1(_(_(_(in, "contents"), "rval"), "val1")[l]);
+
+    Cassign(out_val[l]).
+      IF(inst.get_opcode() == Lit<6>(0x25), inst.get_imm()).
+      IF(inst.get_opcode() == Lit<6>(0x0a), rval0 + rval1).
+      ELSE(Lit<N>(0));
+
+    _(_(_(out, "contents"), "rwb"), "val")[l] = Wreg(ready, out_val[l]);
+  }
+
+  tap("alu_out", out);
+  tap("alu_in", in);
+
+  HIERARCHY_EXIT();
+}
+
+void Funcunit_plu(func_splitter_t &out, reg_func_t &in) {
+  HIERARCHY_ENTER();
+  HIERARCHY_EXIT();
+}
+
+void Funcunit_mult(func_splitter_t &out, reg_func_t &in) {
+  HIERARCHY_ENTER();
+  HIERARCHY_EXIT();
+}
+
+void Funcuint_div(func_splitter_t &out, reg_func_t &in) {
+  HIERARCHY_ENTER();
+  HIERARCHY_EXIT();
+}
+
+void Funcunit_lsu(func_splitter_t &out, reg_func_t &in) {
+  HIERARCHY_ENTER();
+  HIERARCHY_EXIT();
+}
+
+void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_ENTER();
   HIERARCHY_EXIT();
 }

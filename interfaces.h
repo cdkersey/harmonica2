@@ -59,15 +59,17 @@ namespace chdl {
                ag<STP("pval"), pval_t> > > > pred_reg_t;
 
   // Reg->Dispatch, Dispatch->FU
-  typedef flit<ag<STP("warp"), warp_t,
-               ag<STP("ir"), bvec<N>,
-               ag<STP("pval"), pval_t,
-               ag<STP("rval"), rval_t> > > > > reg_func_t;
+  typedef ag<STP("warp"), warp_t,
+          ag<STP("ir"), bvec<N>,
+          ag<STP("pval"), pval_t,
+          ag<STP("rval"), rval_t> > > > reg_func_int_t;
+
+  typedef flit<reg_func_int_t> reg_func_t;
 
   // FU->Arbiter, Arbiter->Splitter
   typedef flit<ag<STP("warp"), warp_t,
                ag<STP("rwb"), rwb_t,
-               ag<STP("pwb"), pwb_t> > > > func_sched_t;
+               ag<STP("pwb"), pwb_t> > > > func_splitter_t;
 
   // Splitter->Register
   typedef flit<rwb_t> splitter_reg_t;
