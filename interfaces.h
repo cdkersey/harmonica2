@@ -22,8 +22,8 @@ namespace chdl {
 
   // Predicate read values
   typedef ag<STP("pmask"), bvec<L>,
-          ag<STP("pval0"), bvec<L>,
-          ag<STP("pval1"), bvec<L> > > > pval_t;
+          ag<STP("val0"), bvec<L>,
+          ag<STP("val1"), bvec<L> > > > pval_t;
 
   // Writeback predicate values
   typedef ag<STP("mask"), bvec<L>,

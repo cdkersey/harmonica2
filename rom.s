@@ -3,9 +3,12 @@
 
 .perm x
 .entry
-entry: ldi %r0, #0xfeed
-       ldi %r0, #0xfeed
-       ldi %r1, #1
+entry: ldi %r0, #1
+       ldi %r1, #0
+       rtop @p0, %r0
+       rtop @p1, %r0
+       andp @p2, @p0, @p1
+       iszero @p3, %r1 
        add %r1, %r0, %r1
        add %r1, %r1, %r0
        add %r1, %r0, %r1

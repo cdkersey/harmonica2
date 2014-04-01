@@ -144,12 +144,14 @@ void PredRegs(pred_reg_t &out, fetch_pred_t &in, splitter_pred_t &wb) {
   _(_(_(out, "contents"), "pval"), "pmask") 
     = Wreg(ready, pmask & bvec<L>(!inst.has_pred()));
 
-  _(_(_(out, "contents"), "pval"), "pval0") = Wreg(ready, pval0);
-  _(_(_(out, "contents"), "pval"), "pval1") = Wreg(ready, pval1);
+  _(_(_(out, "contents"), "pval"), "val0") = Wreg(ready, pval0);
+  _(_(_(out, "contents"), "pval"), "val1") = Wreg(ready, pval1);
 
   pmask = Mux(inst.get_pred(), Mux(wid, pregs));
   pval0 = Mux(inst.get_psrc0(), Mux(wid, pregs));
   pval1 = Mux(inst.get_psrc1(), Mux(wid, pregs));
+
+  TAP(pregs);
 
   HIERARCHY_EXIT();
 }
@@ -173,9 +175,10 @@ void GpRegs(reg_func_t &out, pred_reg_t &in, splitter_reg_t &wb) {
   for (unsigned w = 0; w < W; ++w) {
     node destWarp(wb_wid == Lit<WW>(w));
     for (unsigned r = 0; r < R; ++r) {
+      node destReg(_(_(wb, "contents"), "dest") == Lit<RR>(r));
       for (unsigned l = 0; l < L; ++l) {
         node clone(_(_(wb, "contents"), "clone") && Lit<LL>(l) == wb_clonedest),
-             wr(destWarp && _(wb, "valid"));
+             wr(destWarp && _(wb, "valid") && (clone || destReg));
         regs[w][l][r] = Wreg(wr, Mux(clone, wb_val[l], clonebus[r]));
       }
     }
@@ -201,6 +204,8 @@ void GpRegs(reg_func_t &out, pred_reg_t &in, splitter_reg_t &wb) {
   Flatten(_(_(_(out,"contents"),"rval"),"val0")) = Wreg(ready, Flatten(rval0));
   Flatten(_(_(_(out,"contents"),"rval"),"val1")) = Wreg(ready, Flatten(rval1));
   Flatten(_(_(_(out,"contents"),"rval"),"val2")) = Wreg(ready, Flatten(rval2));
+
+  TAP(regs);
 
   HIERARCHY_EXIT();
 }
@@ -268,30 +273,35 @@ void Execute(splitter_sched_t &out, splitter_pred_t &pwb, splitter_reg_t &rwb,
 void RouteFunc(bvec<N_FU> &valid, const reg_func_int_t &in, node in_valid) {
   harpinst<N, RR, RR> inst(_(in, "ir"));
 
-  valid[FU_ALU] =
+  bvec<N_FU> v;
+
+  v[FU_ALU] =
     inst.get_opcode() == Lit<6>(0x25) || // ldi
     inst.get_opcode() == Lit<6>(0x0a);   // add
 
-  valid[FU_PLU] =
+  v[FU_PLU] =
     inst.get_opcode() == Lit<6>(0x26) || // rtop
+    inst.get_opcode() == Lit<6>(0x2c) || // iszero
     inst.get_opcode() == Lit<6>(0x27);   // andp
 
-  valid[FU_MULT] =
+  v[FU_MULT] =
     inst.get_opcode() == Lit<6>(0x0c) || // mul
     inst.get_opcode() == Lit<6>(0x16);   // muli
 
-  valid[FU_DIV] =
+  v[FU_DIV] =
     inst.get_opcode() == Lit<6>(0x0d) || // div
     inst.get_opcode() == Lit<6>(0x0e) || // mod
     inst.get_opcode() == Lit<6>(0x17) || // divi
     inst.get_opcode() == Lit<6>(0x18);   // modi
 
-  valid[FU_LSU] =
+  v[FU_LSU] =
     inst.get_opcode() == Lit<6>(0x23) || // ld
     inst.get_opcode() == Lit<6>(0x24);   // st
 
-  valid[FU_BRANCH] =
+  v[FU_BRANCH] =
     inst.get_opcode() == Lit<6>(0x1d); // jmpi
+
+  valid = v & bvec<N_FU>(in_valid);
 }
 
 void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
@@ -315,7 +325,9 @@ void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
   _(out, "valid") = Reg(_(in, "valid")) || full;
   _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
 
-  _(_(_(out, "contents"), "rwb"), "mask") = Lit<L>(1); // TODO: fix this!
+  _(_(_(out, "contents"), "rwb"), "mask") =
+    Wreg(ldregs, bvec<L>(inst.has_rdst())); // TODO: and with input mask
+  _(_(_(out, "contents"), "rwb"), "dest") = Wreg(ldregs, inst.get_rdst());
 
   vec<L, bvec<N> > out_val;
 
@@ -324,8 +336,8 @@ void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
             rval1(_(_(_(in, "contents"), "rval"), "val1")[l]);
 
     Cassign(out_val[l]).
-      IF(inst.get_opcode() == Lit<6>(0x25), inst.get_imm()).
-      IF(inst.get_opcode() == Lit<6>(0x0a), rval0 + rval1).
+      IF(inst.get_opcode() == Lit<6>(0x25), inst.get_imm()). // ldi
+      IF(inst.get_opcode() == Lit<6>(0x0a), rval0 + rval1).  // add
       ELSE(Lit<N>(0));
 
     _(_(_(out, "contents"), "rwb"), "val")[l] = Wreg(ldregs, out_val[l]);
@@ -340,6 +352,47 @@ void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
 
 void Funcunit_plu(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_ENTER();
+
+  node ready(_(out, "ready")), next_full, full(Reg(next_full));
+  _(in, "ready") = ready || !full;
+
+  Cassign(next_full).
+    IF(!full).
+      IF(_(in, "valid") && !_(out, "ready"), Lit(1)).
+      ELSE(Lit(0)).
+    END().ELSE().
+      IF(_(out, "ready"), Lit(0)).
+      ELSE(Lit(1));
+
+  harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
+
+  node ldregs(ready || !full);
+
+  _(out, "valid") = Reg(_(in, "valid")) || full;
+  _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
+
+  _(_(_(out, "contents"), "pwb"), "mask") =
+    Wreg(ldregs, bvec<L>(inst.has_pdst())); // TODO: and with input mask
+  _(_(_(out, "contents"), "pwb"), "dest") = Wreg(ldregs, inst.get_pdst());
+
+  bvec<L> out_val;
+
+  for (unsigned l = 0; l < L; ++l) {
+    bvec<N> rval0(_(_(_(in, "contents"), "rval"), "val0")[l]);
+    node pval0(_(_(_(in, "contents"), "pval"), "val0")[l]),
+         pval1(_(_(_(in, "contents"), "pval"), "val1")[l]);
+
+    Cassign(out_val[l]).
+      IF(inst.get_opcode() == Lit<6>(0x26), OrN(rval0)).     // rtop
+      IF(inst.get_opcode() == Lit<6>(0x2c), !OrN(rval0)).    // iszero
+      IF(inst.get_opcode() == Lit<6>(0x27), pval0 && pval1). // andp
+      ELSE(Lit('0'));
+  }
+
+  tap("plu_full", full);
+  tap("plu_out", out);
+  tap("plu_in", in);
+
   HIERARCHY_EXIT();
 }
 
