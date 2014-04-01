@@ -296,16 +296,24 @@ void RouteFunc(bvec<N_FU> &valid, const reg_func_int_t &in, node in_valid) {
 
 void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_ENTER();
-  node ready(_(out, "ready")), full;
+  node ready(_(out, "ready")), next_full, full(Reg(next_full));
   _(in, "ready") = ready || !full;
 
   // TODO: is "full" defined correctly?
-  full = (Reg(full) && !ready) || Reg(!full && _(in, "valid"));
+  Cassign(next_full).
+    IF(!full).
+      IF(_(in, "valid") && !_(out, "ready"), Lit(1)).
+      ELSE(Lit(0)).
+    END().ELSE().
+      IF(_(out, "ready"), Lit(0)).
+      ELSE(Lit(1));
 
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
 
-  _(out, "valid") = Wreg(ready || !full, _(in, "valid"));
-  _(_(out, "contents"), "warp") = Wreg(ready || !full, _(_(in, "contents"), "warp"));
+  node ldregs(ready || !full);
+
+  _(out, "valid") = Reg(_(in, "valid")) || full;
+  _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
 
   _(_(_(out, "contents"), "rwb"), "mask") = Lit<L>(1); // TODO: fix this!
 
@@ -320,7 +328,7 @@ void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
       IF(inst.get_opcode() == Lit<6>(0x0a), rval0 + rval1).
       ELSE(Lit<N>(0));
 
-    _(_(_(out, "contents"), "rwb"), "val")[l] = Wreg(ready || !full, out_val[l]);
+    _(_(_(out, "contents"), "rwb"), "val")[l] = Wreg(ldregs, out_val[l]);
   }
 
   tap("alu_full", full);
