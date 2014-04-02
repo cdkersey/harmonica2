@@ -166,6 +166,7 @@ void GpRegs(reg_func_t &out, pred_reg_t &in, splitter_reg_t &wb) {
   bvec<LL> wb_clonesrc(_(_(wb, "contents"), "clonesrc")),
            wb_clonedest(_(_(wb, "contents"), "clonedest"));
   vec<L, bvec<N> > wb_val(_(_(wb, "contents"), "val"));
+  bvec<L> wbMask(_(_(wb, "contents"), "mask"));
 
   vec<R, bvec<N> > clonebus(Mux(wb_clonesrc, Mux(wb_wid, regs)));
 
@@ -178,7 +179,7 @@ void GpRegs(reg_func_t &out, pred_reg_t &in, splitter_reg_t &wb) {
       node destReg(_(_(wb, "contents"), "dest") == Lit<RR>(r));
       for (unsigned l = 0; l < L; ++l) {
         node clone(_(_(wb, "contents"), "clone") && Lit<LL>(l) == wb_clonedest),
-             wr(destWarp && _(wb, "valid") && (clone || destReg));
+             wr(destWarp && _(wb, "valid") && (clone || destReg && wbMask[l]));
         regs[w][l][r] = Wreg(wr, Mux(clone, wb_val[l], clonebus[r]));
       }
     }
@@ -388,6 +389,8 @@ void Funcunit_plu(func_splitter_t &out, reg_func_t &in) {
       IF(inst.get_opcode() == Lit<6>(0x27), pval0 && pval1). // andp
       ELSE(Lit('0'));
   }
+
+  _(_(_(out, "contents"), "pwb"), "val") = Wreg(ldregs, out_val);
 
   tap("plu_full", full);
   tap("plu_out", out);
