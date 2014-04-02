@@ -1,0 +1,40 @@
+Mul/div units:
+  mul
+  div
+  mod
+  muli
+  divi
+  modi
+
+Memory:
+  ld
+  st
+
+Lane control:
+  clone
+  jalis
+  jalrs
+  jmprt
+
+Kernel mode/exceptions:
+  di
+  ei
+  skep
+  halt
+  trap
+  jmpru
+  reti
+
+Floating point:
+  itof
+  ftoi
+  fadd
+  fsub
+  fmul
+  fdiv
+  fneg
+
+Virtual memory:
+  tlbadd
+  tlbflush
+  tlbrm

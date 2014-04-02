@@ -3,25 +3,17 @@
 
 .perm x
 .entry
-entry: ldi %r0, #1
-       ldi %r1, #0
-       rtop @p0, %r0
-       rtop @p1, %r0
-       andp @p2, @p0, @p1
-       iszero @p3, %r1 
-       add %r1, %r0, %r1
-       add %r1, %r1, %r0
-       add %r1, %r0, %r1
-       add %r1, %r1, %r0
-       add %r1, %r0, %r1
-       add %r1, %r1, %r0
-       add %r1, %r0, %r1
-       add %r1, %r1, %r0
-       add %r1, %r0, %r1
-       add %r1, %r1, %r0
-       add %r1, %r0, %r1
-       add %r1, %r1, %r0
-       add %r1, %r0, %r1
-       add %r1, %r1, %r0
-       add %r1, %r0, %r1
-       add %r1, %r1, %r0
+entry:  jali %r5, counttoten
+        jali %r5, counttoten
+        jali %r5, counttoten
+        jali %r5, counttoten
+
+finish: jmpi finish
+
+counttoten: ldi %r0, #0
+loop:       addi %r0, #1
+            subi %r1, %r0, #10
+            rtop @p0, %r1
+      @p0 ? jmpi loop
+
+            jmpr %r5
