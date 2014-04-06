@@ -39,6 +39,13 @@ void Funcuint_div(func_splitter_t &out, reg_func_t &in);
 void Funcunit_lsu(func_splitter_t &out, reg_func_t &in);
 void Funcunit_branch(func_splitter_t &out, reg_func_t &in);
 
+// The Memory System
+void MemSystem(mem_resp_t &out, mem_req_t &in);
+template <size_t A, size_t B>
+  void AddrRouteFunc(bvec<1u<<(B-A+1)> &valid,
+                     const cache_req_int_t &in,
+                     node in_valid);
+
 // Implementations
 void Harmonica2() {
   HIERARCHY_ENTER();
@@ -180,7 +187,10 @@ void GpRegs(reg_func_t &out, pred_reg_t &in, splitter_reg_t &wb) {
       for (unsigned l = 0; l < L; ++l) {
         node clone(_(_(wb, "contents"), "clone") && Lit<LL>(l) == wb_clonedest),
              wr(destWarp && _(wb, "valid") && (clone || destReg && wbMask[l]));
-        regs[w][l][r] = Wreg(wr, Mux(clone, wb_val[l], clonebus[r]));
+        unsigned initVal(0);
+        if (r == 0) initVal = l;
+        else if (r == 1) initVal = w;
+        regs[w][l][r] = Wreg(wr, Mux(clone, wb_val[l], clonebus[r]), initVal);
       }
     }
   }
@@ -237,7 +247,7 @@ void Execute(splitter_sched_t &out, splitter_pred_t &pwb, splitter_reg_t &rwb,
 
   Buffer<1>(fu_router_in_postbuf, fu_router_in);
 
-  // TODO: 
+  // TODO: ???
   Router(fu_inputs, RouteFunc, fu_router_in_postbuf);
 
   Funcunit_alu(fu_outputs[FU_ALU], fu_inputs[FU_ALU]);
@@ -457,8 +467,39 @@ void Funcuint_div(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_EXIT();
 }
 
-void Funcunit_lsu(func_splitter_t &out, reg_func_t &in) {
+void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
+{
   HIERARCHY_ENTER();
+
+  mem_req_t req;
+  mem_resp_t resp;
+
+  harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
+
+  // Connect "in" to "req"
+  _(in, "ready") = _(req, "ready");
+  _(req, "valid") = _(in, "valid");
+  _(_(req, "contents"), "warp") = _(_(in, "contents"), "warp");
+  _(_(req, "contents"), "wr") = inst.is_store();
+  _(_(req, "contents"), "mask") = _(_(_(in, "contents"), "pval"), "pmask");
+  for (unsigned l = 0; l < L; ++l) {
+    _(_(req, "contents"), "a")[l] =
+      Mux(inst.is_store(), 
+        _(_(_(in, "contents"), "rval"), "val0")[l] + inst.get_imm(),
+        _(_(_(in, "contents"), "rval"), "val1")[l] + inst.get_imm()
+      );
+    _(_(req, "contents"), "d")[l] =
+      _(_(_(in, "contents"), "rval"), "val0")[l];
+  }
+
+  // Connect "out" to "mem_in"
+  _(resp, "ready") = _(out, "ready");
+
+  MemSystem(resp, req);
+
+  tap("lsu_out", out);
+  tap("lsu_in", in);
+
   HIERARCHY_EXIT();
 }
 
@@ -516,6 +557,102 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
   tap("branch_in", in);
   HIERARCHY_EXIT();
 }
+
+void DummyCache(cache_resp_t &out, cache_req_t &in) {
+  
+}
+
+void MemSystem(mem_resp_t &out, mem_req_t &in) {
+  HIERARCHY_ENTER();
+  // TODO: Add an associative table to enable cache_resps to arrive out-of-order
+  // e.g. from a non-blocking cache.
+
+  node next_full, full(Reg(next_full)), fill, empty;
+  _(in, "ready") = !full;
+  next_full = (full && !empty) || (!full && fill && !empty);
+  fill = _(in, "valid") && !full;
+  // TODO: what is the value of empty (the verb, not the adjective)?
+
+  vec<L, bvec<L> > eqmat; // Coalesce matrix: which addresses are equal?
+  bvec<L> covered; // Is my request covered by that of a prior lane?
+  cache_req_t cache_req;
+  cache_resp_t cache_resp;
+
+  vec<L, bvec<N> > a(_(_(in, "contents"), "a"));
+
+  for (unsigned i = 0; i < L; ++i) {
+    for (unsigned j = i; j < L; ++j)
+      eqmat[i][j] = Lit(0);
+    for (unsigned j = 0; j < i; ++j) {
+      bvec<N-CLOG2(LINE*(N/8))> ai(a[i][range<CLOG2(LINE*(N/8)), N-1>()]),
+                                aj(a[j][range<CLOG2(LINE*(N/8)), N-1>()]);
+      eqmat[i][j] = ai == aj;
+    }
+    covered[i] = OrN(eqmat[i]);
+  }
+
+  bvec<L> allReqMask(Wreg(fill, ~covered & _(_(in, "contents"), "mask"))),
+          next_sentReqMask, sentReqMask(Reg(next_sentReqMask)),
+          next_returnedReqMask, returnedReqMask(Reg(next_returnedReqMask));
+
+  vec<L, bvec<N> > aReg, dReg;
+  for (unsigned l = 0; l < L; ++l) {
+    aReg[l] = Wreg(fill, a[l]);
+    dReg[l] = Wreg(fill, _(_(in, "contents"), "d")[l]);
+  }
+
+  bvec<LL> sel(Lsb(allReqMask & ~sentReqMask));
+
+  TAP(eqmat); TAP(covered); TAP(allReqMask); TAP(sentReqMask);
+  TAP(returnedReqMask); TAP(sel);
+
+  Cassign(next_sentReqMask).
+    IF(fill, Lit<L>(0)).
+    IF(sentReqMask != allReqMask, sentReqMask | Lit<L>(1)<<sel).
+      // TODO: only if cache req is ready
+    ELSE(sentReqMask);
+
+  bvec<N> reqAddr(Mux(sel, aReg) & ~Lit<N>(LINE*(N/8)-1));
+
+  _(_(cache_req, "contents"), "a") = reqAddr;
+  _(_(cache_req, "contents"), "lane") = sel;
+  _(_(cache_req, "contents"), "warp") = Wreg(fill, _(_(in, "contents"),"warp"));
+  _(_(cache_req, "contents"), "wr") = Wreg(fill, _(_(in, "contents"), "wr"));
+
+  tap("mem_aReg", aReg);
+  tap("mem_dReg", dReg);
+
+  for (unsigned i = 0; i < LINE; ++i) {
+    bvec<L> maskBits;
+    // TODO: D.R.Y. (log2 of line size in bytes)
+    for (unsigned l = 0; l < L; ++l)
+      maskBits[l] = (aReg[l][range<CLOG2(N/8), CLOG2((N/8)*LINE)-1>()] == Lit<CLOG2(LINE)>(i)) && (aReg[l][range<CLOG2((N/8)*LINE), N-1>()] == reqAddr[range<CLOG2((N/8)*LINE), N-1>()]);
+    
+    _(_(cache_req, "contents"), "mask")[i] = OrN(maskBits);
+    _(_(cache_req, "contents"), "d")[i] = Mux(Log2(maskBits), dReg);
+  }
+
+  TAP(cache_req);
+
+  tap("mem_fill", fill);
+  tap("mem_empty", empty);
+  tap("mem_full", full);
+  tap("mem_in", in);
+  tap("mem_out", out);
+  tap("mem_reqAddr", reqAddr);
+
+  HIERARCHY_EXIT();
+}
+
+template <unsigned A, unsigned B>
+  void AddrRouteFunc(bvec<1u<<(B-A+1)> &valid,
+                     const cache_req_int_t &in,
+                     node in_valid)
+  {
+    bvec<1u<<(B-A+1)> sel(_(in, "a")[range<A, B>()]);
+
+    valid = Dec(sel, in_valid);
+  }
 
 int main(int argc, char **argv) {
   // Instantiate the processor

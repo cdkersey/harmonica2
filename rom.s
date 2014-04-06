@@ -3,17 +3,33 @@
 
 .perm x
 .entry
-entry:  jali %r5, counttoten
-        jali %r5, counttoten
-        jali %r5, counttoten
-        jali %r5, counttoten
+entry:  ori %r4, %r0, #0
+        jali %r5, counttotenandstore
+        jali %r5, counttotenandload
 
 finish: jmpi finish
 
-counttoten: ldi %r0, #0
-loop:       addi %r0, #1
-            subi %r1, %r0, #10
-            rtop @p0, %r1
-      @p0 ? jmpi loop
+counttotenandstore: shli %r0, %r4, #3
+loop1:              shli %r1, %r0, #2
+                    st %r0, %r1, array
+                    addi %r0, #1
+                    subi %r1, %r0, #9
+                    rtop @p0, %r1
+              @p0 ? jmpi loop1
 
-            jmpr %r5
+                    jmpr %r5
+
+counttotenandload: shli %r0, %r4, #3
+                   ldi %r3, #0
+loop2:             shli %r1, %r0, #2
+                   ld %r2, %r1, array
+                   add %r3, %r3, %r2
+                   addi %r0, #1
+                   subi %r1, %r0, #8
+                   rtop @p0, %r1
+             @p0 ? jmpi loop2
+
+                   jmpi %r5
+
+array: .space 10
+

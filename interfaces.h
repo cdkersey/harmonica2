@@ -45,7 +45,6 @@ namespace chdl {
           ag<STP("clonesrc"), bvec<LL>,
           ag<STP("clonedest"), bvec<LL> > > > > > > > rwb_t;
 
-
   // Sched->Fetch
   typedef flit<warp_t> sched_fetch_t;
 
@@ -79,6 +78,31 @@ namespace chdl {
 
   // Splitter->Sched
   typedef flit<warp_t> splitter_sched_t;
+
+  // Memory Request
+  typedef flit<ag<STP("warp"), warp_t,
+               ag<STP("wr"), node,
+               ag<STP("mask"), bvec<L>,
+               ag<STP("a"), vec<L, bvec<N> >,
+               ag<STP("d"), vec<L, bvec<N> > > > > > > > mem_req_t;    
+
+  // Cache Request
+  typedef ag<STP("warp"), warp_t,
+          ag<STP("lane"), bvec<LL>,
+          ag<STP("wr"), node,
+          ag<STP("mask"), bvec<LINE>,
+          ag<STP("a"), bvec<N>,
+          ag<STP("d"), vec<LINE, bvec<N> > > > > > > > cache_req_int_t;
+
+  typedef flit<cache_req_int_t> cache_req_t;
+
+  // Memory Response
+  typedef flit<ag<STP("warp"), warp_t,
+               ag<STP("q"), bvec<N> > > > mem_resp_t;
+
+  // Cache Response
+  typedef flit<ag<STP("warp"), warp_t,
+               ag<STP("q"), vec<LINE, bvec<N> > > > > cache_resp_t;
 }
 
 #endif
