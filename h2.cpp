@@ -492,8 +492,20 @@ void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
       _(_(_(in, "contents"), "rval"), "val0")[l];
   }
 
-  // Connect "out" to "mem_in"
+  // Keep track of whether operations issued to memory system were stores
+  node issue(_(in, "ready") && _(in, "valid"));
+  bvec<L> ldMask(Wreg(issue,
+    bvec<L>(inst.has_rdst()) & _(_(_(in, "contents"), "pval"), "pmask")
+  ));
+  bvec<RR> ldDest(Wreg(issue, inst.get_rdst()));
+
+  // Connect "out" to resp
   _(resp, "ready") = _(out, "ready");
+  _(out, "valid") = _(resp, "valid");
+  _(_(out, "contents"), "warp") = _(_(resp, "contents"), "warp");
+  _(_(_(out,"contents"),"rwb"),"wid") = _(_(_(resp,"contents"),"warp"),"id");
+  _(_(_(out,"contents"),"rwb"),"mask") = ldMask;
+  _(_(_(out,"contents"),"rwb"),"dest") = ldDest;
 
   MemSystem(resp, req);
 
@@ -562,8 +574,15 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
   node ready = _(out, "ready");
   _(in, "ready") = ready;
 
-  _(out, "valid") = Wreg(!ready, _(in, "valid"));
-  _(_(out, "contents"), "warp") = Wreg(!ready, _(_(in, "contents"), "warp"));
+  node ldregs(ready && _(in, "valid")), next_full, full(Reg(next_full));
+
+  Cassign(next_full).
+    IF(!full && _(in, "valid") && ready, Lit(1)).
+    IF(full && (!_(in, "valid") || !ready), Lit(0)).
+    ELSE(full);
+
+  _(out, "valid") = full;
+  _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
 
   bvec<N> a(_(_(in, "contents"), "a"));
   bvec<10> devAddr(a[range<CLOG2(LINE*(N/8)), CLOG2(LINE*(N/8))+9>()]);
@@ -577,7 +596,7 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
   }
 
   vec<LINE, bvec<N> > held_memq;
-  Flatten(held_memq) = Wreg(!ready, Flatten(memq));
+  Flatten(held_memq) = Wreg(ldregs, Flatten(memq));
 
   tap("dummy_cache_memq", memq);
   TAP(devAddr);
@@ -585,8 +604,7 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
   Flatten(_(_(out, "contents"), "q")) =
     Mux(ready && Reg(ready), Flatten(held_memq), Flatten(memq));
 
-  // . . .
-  
+  _(_(out, "contents"), "lane") = Wreg(ldregs, _(_(in, "contents"), "lane"));  
 }
 
 void MemSystem(mem_resp_t &out, mem_req_t &in) {
@@ -622,10 +640,14 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
           next_sentReqMask, sentReqMask(Reg(next_sentReqMask)),
           next_returnedReqMask, returnedReqMask(Reg(next_returnedReqMask));
 
-  vec<L, bvec<N> > aReg, dReg;
+  bvec<L> ldqReg;
+  vec<L, bvec<L> > eqmatReg;
+  vec<L, bvec<N> > aReg, dReg, qReg;
   for (unsigned l = 0; l < L; ++l) {
+    eqmatReg[l] = Wreg(fill, eqmat[l]);
     aReg[l] = Wreg(fill, a[l]);
     dReg[l] = Wreg(fill, _(_(in, "contents"), "d")[l]);
+    qReg[l] = Wreg(ldqReg[l], Mux(aReg[l][range<CLOG2(N/8), CLOG2(N/8*LINE)-1>()], _(_(cache_resp,"contents"),"q")));
   }
 
   bvec<LL> sel(Lsb(allReqMask & ~sentReqMask));
@@ -635,8 +657,8 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
 
   Cassign(next_sentReqMask).
     IF(fill, Lit<L>(0)).
-    IF(sentReqMask != allReqMask, sentReqMask | Lit<L>(1)<<sel).
-      // TODO: only if cache req is ready
+    IF(_(cache_req, "ready") && (sentReqMask != allReqMask),
+       sentReqMask | Lit<L>(1)<<sel).
     ELSE(sentReqMask);
 
   bvec<N> reqAddr(Mux(sel, aReg) & ~Lit<N>(LINE*(N/8)-1));
@@ -646,8 +668,7 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
   _(_(cache_req, "contents"), "warp") = Wreg(fill, _(_(in, "contents"),"warp"));
   _(_(cache_req, "contents"), "wr") = Wreg(fill, _(_(in, "contents"), "wr"));
 
-  tap("mem_aReg", aReg);
-  tap("mem_dReg", dReg);
+  tap("mem_aReg", aReg);  tap("mem_dReg", dReg); tap("mem_qReg", qReg);
 
   for (unsigned i = 0; i < LINE; ++i) {
     bvec<L> maskBits;
@@ -662,7 +683,28 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
   TAP(cache_req);
   TAP(cache_resp);
 
+  _(cache_req, "valid") = full && sentReqMask != allReqMask;
+
   DummyCache(cache_resp, cache_req);
+
+  _(cache_resp, "ready") = full && returnedReqMask != allReqMask;
+
+  Cassign(next_returnedReqMask).
+    IF(fill, Lit<L>(0)).
+    IF(_(cache_resp, "ready") && _(cache_resp, "valid"),
+      returnedReqMask | Lit<L>(1)<<_(_(cache_resp, "contents"),"lane")).
+    ELSE(returnedReqMask);
+
+  // Load these lanes' q registers for this response.
+  ldqReg = Mux(_(_(cache_resp,"contents"),"lane"), eqmatReg);
+
+  ASSERT(!OrN(returnedReqMask & ~sentReqMask));
+
+  _(out, "valid") = full && (returnedReqMask == allReqMask);
+
+  // TODO: set contents out out!
+
+  empty = _(out, "valid") && _(out, "ready");
 
   tap("mem_fill", fill);
   tap("mem_empty", empty);

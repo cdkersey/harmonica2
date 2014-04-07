@@ -102,7 +102,8 @@ namespace chdl {
 
   // Cache Response
   typedef flit<ag<STP("warp"), warp_t,
-               ag<STP("q"), vec<LINE, bvec<N> > > > > cache_resp_t;
+               ag<STP("lane"), bvec<LL>,
+               ag<STP("q"), vec<LINE, bvec<N> > > > > > cache_resp_t;
 }
 
 #endif
