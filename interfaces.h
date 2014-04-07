@@ -98,7 +98,7 @@ namespace chdl {
 
   // Memory Response
   typedef flit<ag<STP("warp"), warp_t,
-               ag<STP("q"), bvec<N> > > > mem_resp_t;
+               ag<STP("q"), vec<L, bvec<N> > > > > mem_resp_t;
 
   // Cache Response
   typedef flit<ag<STP("warp"), warp_t,

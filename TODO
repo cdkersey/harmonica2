@@ -1,3 +1,10 @@
+- Write dummy cache
+- Finish MemSystem
+- Split into files
+- Upload!
+- Write memory mapped IO module
+- Add lane control instructions
+
 Mul/div units:
   mul
   div

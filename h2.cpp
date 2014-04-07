@@ -559,6 +559,33 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
 }
 
 void DummyCache(cache_resp_t &out, cache_req_t &in) {
+  node ready = _(out, "ready");
+  _(in, "ready") = ready;
+
+  _(out, "valid") = Wreg(!ready, _(in, "valid"));
+  _(_(out, "contents"), "warp") = Wreg(!ready, _(_(in, "contents"), "warp"));
+
+  bvec<N> a(_(_(in, "contents"), "a"));
+  bvec<10> devAddr(a[range<CLOG2(LINE*(N/8)), CLOG2(LINE*(N/8))+9>()]);
+
+  vec<LINE, bvec<N> > memd(_(_(in, "contents"), "d"));
+  vec<LINE, bvec<N> > memq;
+  for (unsigned i = 0; i < LINE; ++i) {
+    node wr(_(_(in, "contents"), "mask")[i] && _(_(in, "contents"), "wr"));
+
+    memq[i] = Syncmem(devAddr, memd[i], wr);
+  }
+
+  vec<LINE, bvec<N> > held_memq;
+  Flatten(held_memq) = Wreg(!ready, Flatten(memq));
+
+  tap("dummy_cache_memq", memq);
+  TAP(devAddr);
+
+  Flatten(_(_(out, "contents"), "q")) =
+    Mux(ready && Reg(ready), Flatten(held_memq), Flatten(memq));
+
+  // . . .
   
 }
 
@@ -633,6 +660,9 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
   }
 
   TAP(cache_req);
+  TAP(cache_resp);
+
+  DummyCache(cache_resp, cache_req);
 
   tap("mem_fill", fill);
   tap("mem_empty", empty);
