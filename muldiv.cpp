@@ -34,7 +34,7 @@ void Funcunit_mult(func_splitter_t &out, reg_func_t &in) {
 
   Cassign(next_full).
     IF(start, Lit(1)).
-    IF(_(out, "ready") && full, Lit(0)).
+    IF(!busy && _(out, "ready"), Lit(0)).
     ELSE(full);
 
   _(in, "ready") = !busy && !full;
@@ -47,6 +47,9 @@ void Funcunit_mult(func_splitter_t &out, reg_func_t &in) {
   _(_(_(out, "contents"), "rwb"), "mask") = Wreg(start, pmask);
   _(_(_(out, "contents"), "rwb"), "val") = mulOut;
 
+  tap("mul_full", full);
+  tap("mul_busy", busy);
+  tap("mul_start", start);
   tap("mul_in", in);
   tap("mul_out", out);
 
@@ -73,8 +76,6 @@ template <unsigned N>
     IF(OrN(shrreg), state + Lit<CLOG2(N+1)>(2)).
     ELSE(Lit<CLOG2(N+1)>(0));
 
-  TAP(state);
-
   busy = OrN(state);
 
   bvec<N> next_shlreg, shlreg(Reg(next_shlreg));
@@ -90,8 +91,6 @@ template <unsigned N>
 
   bvec<N> shlreg2(Cat(shlreg[range<0,N-2>()], Lit(0))),
           shlreg3(shlreg2 + shlreg);
-
-  TAP(shlreg); TAP(shrreg); TAP(shlreg2); TAP(shlreg3);
 
   bvec<N> next_resultreg, resultreg(Reg(next_resultreg));
   Cassign(next_resultreg).
