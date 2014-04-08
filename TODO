@@ -1,47 +1,8 @@
-- Write dummy cache
-- Finish MemSystem
-- Split into files
-- Upload!
-- Write memory mapped IO module
-- Add lane control instructions
+- Write memory mapped IO module using address-based routing module
+- Add lane/warp control instructions
 
-Mul/div units:
-  mul
-  div
-  mod
-  muli
-  divi
-  modi
-
-Memory:
-  ld
-  st
-
-Lane control:
-  clone
-  jalis
-  jalrs
-  jmprt
-
-Kernel mode/exceptions:
-  di
-  ei
-  skep
-  halt
-  trap
-  jmpru
-  reti
-
-Floating point:
-  itof
-  ftoi
-  fadd
-  fsub
-  fmul
-  fdiv
-  fneg
-
-Virtual memory:
-  tlbadd
-  tlbflush
-  tlbrm
+Lane control:           clone  jalis  jalrs  jmprt  (clonew)
+Divider:                div  mod  divi  modi
+Kernel mode/exceptions: di  ei  skep  halt  trap  jmpru  reti
+Floating point:         itof  ftoi  fadd  fsub  fmul  fdiv  fneg
+Virtual memory:         tlbadd  tlbflush  tlbrm

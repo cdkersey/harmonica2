@@ -4,7 +4,7 @@ ARCH = 4w8/8/1
 
 all : h2.vcd
 
-h2: regfile.o h2.o alu.o exec.o sched.o fetch.o mem.o
+h2: regfile.o h2.o alu.o exec.o sched.o fetch.o mem.o muldiv.o branch.o
 	$(CXX) $(LDFLAGS) -o h2 $^ $(LDLIBS)
 
 h2.o: h2.cpp config.h interfaces.h
@@ -14,6 +14,8 @@ exec.o: exec.cpp config.h interfaces.h
 sched.o: sched.cpp config.h interfaces.h
 fetch.o: fetch.cpp config.h interfaces.h
 mem.o: mem.cpp config.h interfaces.h
+muldiv.o: muldiv.cpp config.h interfaces.h
+branch.o: branch.cpp config.h interfaces.h
 
 rom.hex : rom.bin
 	hexdump -v -e '1/4 "%08x" "\n"' rom.bin > rom.hex

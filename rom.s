@@ -24,7 +24,7 @@ loop2:       addi %r0, %r0, #1;
              iszero @p0, %r1;
        @p0 ? jmpi loop2;
 
-             add %r2, %r1, %r1; /* mul   %r2, %r1, %r1; */
+             mul   %r2, %r1, %r1;
              subi  %r3, %r2, SIZE;
              neg   %r3, %r3
              isneg @p0, %r3;
