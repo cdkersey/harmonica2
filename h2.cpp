@@ -742,7 +742,7 @@ int main(int argc, char **argv) {
   optimize();
 
   ofstream vcd("h2.vcd");
-  run(vcd, 1000);
+  run(vcd, 10000);
 
   return 0;
 }
