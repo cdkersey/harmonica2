@@ -2,11 +2,14 @@ CXXFLAGS = -std=c++11 -O3 -DDEBUG
 LDLIBS = -lchdl
 ARCH = 4w8/8/1
 
-h2.vcd : h2 rom.hex
-	./h2
+all : h2.vcd
 
-h2: h2.cpp config.h interfaces.h
-	$(CXX) $(CXXFLAGS) -o h2 h2.cpp $(LDLIBS)
+h2: regfile.o h2.o alu.o
+	$(CXX) $(LDFLAGS) -o h2 $^ $(LDLIBS)
+
+h2.o: h2.cpp config.h interfaces.h
+alu.o: alu.cpp config.h interfaces.h
+regfile.o: regfile.cpp config.h interfaces.h
 
 rom.hex : rom.bin
 	hexdump -v -e '1/4 "%08x" "\n"' rom.bin > rom.hex
@@ -18,6 +21,9 @@ rom.bin : rom.HOF
 
 rom.HOF : rom.s
 	harptool -A --arch $(ARCH) -o rom.HOF rom.s
+
+h2.vcd : h2 rom.hex
+	./h2
 
 clean:
 	rm -f h2 h2.vcd *.o *~ rom.hex rom.bin rom.HOF
