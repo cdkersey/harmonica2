@@ -506,6 +506,7 @@ void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
   _(_(_(out,"contents"),"rwb"),"wid") = _(_(_(resp,"contents"),"warp"),"id");
   _(_(_(out,"contents"),"rwb"),"mask") = ldMask;
   _(_(_(out,"contents"),"rwb"),"dest") = ldDest;
+  _(_(_(out,"contents"),"rwb"),"val") = _(_(resp,"contents"),"q");
 
   MemSystem(resp, req);
 
@@ -644,7 +645,10 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
   vec<L, bvec<L> > eqmatReg;
   vec<L, bvec<N> > aReg, dReg, qReg;
   for (unsigned l = 0; l < L; ++l) {
-    eqmatReg[l] = Wreg(fill, eqmat[l]);
+    for (unsigned i = 0; i < L; ++i) {
+      if (i == l) eqmatReg[l][i] = Lit(1);
+      else        eqmatReg[l][i] = Wreg(fill, eqmat[i][l]);
+    }
     aReg[l] = Wreg(fill, a[l]);
     dReg[l] = Wreg(fill, _(_(in, "contents"), "d")[l]);
     qReg[l] = Wreg(ldqReg[l], Mux(aReg[l][range<CLOG2(N/8), CLOG2(N/8*LINE)-1>()], _(_(cache_resp,"contents"),"q")));
@@ -702,7 +706,8 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
 
   _(out, "valid") = full && (returnedReqMask == allReqMask);
 
-  // TODO: set contents out out!
+  _(_(out, "contents"), "warp") = Wreg(_(cache_resp, "valid") && _(cache_resp, "ready"), _(_(cache_resp, "contents"), "warp"));
+  _(_(out, "contents"), "q") = qReg;
 
   empty = _(out, "valid") && _(out, "ready");
 
@@ -712,6 +717,8 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
   tap("mem_in", in);
   tap("mem_out", out);
   tap("mem_reqAddr", reqAddr);
+  tap("mem_ldqReg", ldqReg);
+  tap("mem_eqmatReg", eqmatReg);
 
   HIERARCHY_EXIT();
 }
