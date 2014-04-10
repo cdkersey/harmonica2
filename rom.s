@@ -24,7 +24,8 @@ loop2:       addi %r0, %r0, #1;
              iszero @p0, %r1;
        @p0 ? jmpi loop2;
 
-             mul   %r2, %r1, %r1;
+             /* mul   %r2, %r1, %r1; */
+             add   %r2, %r1, %r1; /* This is, of course, idiotic. */
              subi  %r3, %r2, SIZE;
              neg   %r3, %r3
              isneg @p0, %r3;
@@ -48,7 +49,7 @@ printloop:   ld    %r7, %r0, array;
              rtop  @p1, %r2;
              addi  %r0, %r0, __WORD;
              andp  @p2, @p0, @p1
-       /*@p2 ? jali %r5, printdec;*/
+       @p2 ? jali %r5, printdec;
        @p1 ? jmpi printloop;
 
 finished:    jmpi  finished; /*Instruction 41, PC=164*/
