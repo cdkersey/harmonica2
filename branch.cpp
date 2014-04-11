@@ -43,6 +43,8 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
 
   _(_(_(out, "contents"), "rwb"), "mask") =
     Wreg(ldregs, bvec<L>(inst.has_rdst()) & pmask); // TODO: and w/ active lanes
+  _(_(_(out, "contents"), "rwb"), "wid") =
+    Wreg(ldregs, _(_(_(in, "contents"), "warp"), "id"));
   _(_(_(out, "contents"), "rwb"), "dest") = Wreg(ldregs, inst.get_rdst());
   _(_(_(out, "contents"), "rwb"), "val") = Wreg(ldregs, pc);
 

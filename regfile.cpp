@@ -34,6 +34,8 @@ void PredRegs(pred_reg_t &out, fetch_pred_t &in, splitter_pred_t &wb) {
     }
   }
 
+  tap("pred_wb_wid", wSel);
+
   // Handle ready and valid signals
   node ready(_(out, "ready"));
   _(in, "ready") = ready;
@@ -92,6 +94,8 @@ void GpRegs(reg_func_t &out, pred_reg_t &in, splitter_reg_t &wb) {
       }
     }
   }
+
+  TAP(wb_wid);
 
   node ready(_(out, "ready"));
   bvec<WW> wid(_(_(_(in, "contents"), "warp"), "id"));

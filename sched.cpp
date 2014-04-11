@@ -25,7 +25,7 @@ void Starter(splitter_sched_t &out) {
   _(_(out, "contents"), "state") = Lit<SS>(TS_USER); // TODO: TS_KERNEL
   _(_(out, "contents"), "pc") = Lit<N>(0);
   _(_(out, "contents"), "active") = Lit<L>(1);
-  _(_(out, "contents"), "id") = Lit<WW>(0);
+  _(_(out, "contents"), "id") = Lit<WW>(1);
 
   ASSERT(!(firstCyc && !_(out, "ready")));
   HIERARCHY_EXIT();

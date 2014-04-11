@@ -41,6 +41,8 @@ void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
   _(_(_(out, "contents"), "rwb"), "mask") =
     Wreg(ldregs, bvec<L>(inst.has_rdst()) & pmask); // TODO: and w/ active lanes
   _(_(_(out, "contents"), "rwb"), "dest") = Wreg(ldregs, inst.get_rdst());
+  _(_(_(out, "contents"), "rwb"), "wid") =
+    Wreg(ldregs, _(_(_(in, "contents"), "warp"), "id"));
 
   vec<L, bvec<N> > out_val;
 
@@ -101,6 +103,8 @@ void Funcunit_plu(func_splitter_t &out, reg_func_t &in) {
 
   _(out, "valid") = Reg(_(in, "valid")) || full;
   _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
+  _(_(_(out, "contents"), "rwb"), "wid") =
+    Wreg(ldregs, _(_(_(in, "contents"), "warp"), "id"));
 
   bvec<L> pmask(_(_(_(in, "contents"), "pval"), "pmask"));
 

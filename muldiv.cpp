@@ -53,6 +53,8 @@ void Funcunit_mult(func_splitter_t &out, reg_func_t &in) {
   _(_(_(out, "contents"), "rwb"), "dest") = Wreg(start, inst.get_rdst());
   _(_(_(out, "contents"), "rwb"), "mask") = Wreg(start, pmask);
   _(_(_(out, "contents"), "rwb"), "val") = mulOut;
+  _(_(_(out, "contents"), "rwb"), "wid") =
+    Wreg(start, _(_(_(in, "contents"), "warp"), "id"));
 
   tap("mul_full", full);
   tap("mul_busy", busy);
@@ -91,8 +93,11 @@ void Funcuint_div(func_splitter_t &out, reg_func_t &in) {
   _(_(out, "contents"), "warp") = Wreg(start, _(_(in, "contents"), "warp"));
   _(_(_(out, "contents"), "rwb"), "dest") = Wreg(start, inst.get_rdst());
   _(_(_(out, "contents"), "rwb"), "mask") = Wreg(start, pmask);
+  _(_(_(out, "contents"), "rwb"), "wid") =
+    Wreg(start, _(_(_(in, "contents"), "warp"), "id"));
   for (unsigned l = 0; l < L; ++l)
-    _(_(_(out, "contents"), "rwb"), "val")[l] = Mux(inst.get_opcode()[0], r[l], q[l]);
+    _(_(_(out, "contents"), "rwb"), "val")[l] =
+      Mux(inst.get_opcode()[0], r[l], q[l]);
 
   tap("div_valid", valid);
   tap("div_ready", ready);
