@@ -103,7 +103,7 @@ void Funcunit_plu(func_splitter_t &out, reg_func_t &in) {
 
   _(out, "valid") = Reg(_(in, "valid")) || full;
   _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
-  _(_(_(out, "contents"), "rwb"), "wid") =
+  _(_(_(out, "contents"), "pwb"), "wid") =
     Wreg(ldregs, _(_(_(in, "contents"), "warp"), "id"));
 
   bvec<L> pmask(_(_(_(in, "contents"), "pval"), "pmask"));

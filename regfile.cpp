@@ -34,7 +34,7 @@ void PredRegs(pred_reg_t &out, fetch_pred_t &in, splitter_pred_t &wb) {
     }
   }
 
-  tap("pred_wb_wid", wSel);
+  tap("pred_wb_wid", _(_(wb, "contents"), "wid"));
 
   // Handle ready and valid signals
   node ready(_(out, "ready"));
