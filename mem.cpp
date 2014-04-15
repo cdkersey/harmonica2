@@ -110,10 +110,10 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
   _(in, "ready") = !full;
   next_full = (full && !empty) || (!full && fill && !empty);
   fill = _(in, "valid") && !full;
-  // TODO: what is the value of empty (the verb, not the adjective)?
 
   vec<L, bvec<L> > eqmat; // Coalesce matrix: which addresses are equal?
-  bvec<L> covered; // Is my request covered by that of a prior lane?
+  bvec<L> covered, // Is my request covered by that of a prior lane?
+          mask(_(_(in, "contents"), "mask"));
   cache_req_t cache_req;
   cache_resp_t cache_resp;
 
@@ -125,12 +125,12 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
     for (unsigned j = 0; j < i; ++j) {
       bvec<N-CLOG2(LINE*(N/8))> ai(a[i][range<CLOG2(LINE*(N/8)), N-1>()]),
                                 aj(a[j][range<CLOG2(LINE*(N/8)), N-1>()]);
-      eqmat[i][j] = ai == aj;
+      eqmat[i][j] = ai == aj && mask[i] && mask[j];
     }
     covered[i] = OrN(eqmat[i]);
   }
 
-  bvec<L> allReqMask(Wreg(fill, ~covered & _(_(in, "contents"), "mask"))),
+  bvec<L> allReqMask(Wreg(fill, ~covered & mask)),
           next_sentReqMask, sentReqMask(Reg(next_sentReqMask)),
           next_returnedReqMask, returnedReqMask(Reg(next_returnedReqMask));
 
@@ -199,7 +199,11 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
 
   _(out, "valid") = full && (returnedReqMask == allReqMask);
 
-  _(_(out, "contents"), "warp") = Wreg(_(cache_resp, "valid") && _(cache_resp, "ready"), _(_(cache_resp, "contents"), "warp"));
+  _(_(out, "contents"), "warp") = Wreg(fill, _(_(in, "contents"), "warp"));
+  // TODO: Why did we ever do this? 
+  // _(_(out, "contents"), "warp") =
+  //   Wreg(_(cache_resp, "valid") && _(cache_resp, "ready"),
+  //           _(_(cache_resp, "contents"), "warp"));
   _(_(out, "contents"), "q") = qReg;
 
   empty = _(out, "valid") && _(out, "ready");
