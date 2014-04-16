@@ -97,7 +97,7 @@ void Funcuint_div(func_splitter_t &out, reg_func_t &in) {
     Wreg(start, _(_(_(in, "contents"), "warp"), "id"));
   for (unsigned l = 0; l < L; ++l)
     _(_(_(out, "contents"), "rwb"), "val")[l] =
-      Mux(inst.get_opcode()[0], r[l], q[l]);
+      Mux(Wreg(start, inst.get_opcode()[0]), r[l], q[l]);
 
   tap("div_valid", valid);
   tap("div_ready", ready);
