@@ -1,7 +1,34 @@
 Harmonica 2
 ===========
 
+Harmonica 2 is a configurable multithreaded SIMT (single-instruction, multiple
+thread) processor core desgin. Its multi-threaded (multi-warp) design enables
+it to operate at high throughput without the added complexity of a result
+forwarding network, and its SIMT design further improves throughput by running
+multiple threads simultaneously on multiple functional units while using only a
+single set of control logic. These features are the same ones that make
+general-purpose graphics processing units (GPGPUs) attractive for a wide range
+of applications.
+
+Harmonica 2 is network-based; its pipeline stages are connected using the
+routers, arbiters, and buffers provided in the CHDL standard template library.
+This feature enables the exploration of novel processor architectures through
+simple reconfiguration of the modules provided.
+
 Contents
 --------
 
-1 - Interfaces
+  i - Introduction
+  ii - Contents
+  1 - Code Organization
+  2 - Interfaces
+  3 - Functional Units
+
+1 - Code Organization
+---------------------
+
+2 - Interfaces
+--------------
+
+3 - Functional Units
+--------------------
