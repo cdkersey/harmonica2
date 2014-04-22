@@ -52,6 +52,10 @@ int main(int argc, char **argv) {
   if (cycdet()) return 1;
   optimize();
 
+  // Do a critical path report
+  ofstream cp_report("h2.crit");
+  critpath_report(cp_report);
+
   ofstream vcd("h2.vcd");
   run(vcd, 10000);
 

@@ -28,8 +28,8 @@ rom.bin : rom.HOF
 rom.HOF : rom.s
 	harptool -A --arch $(ARCH) -o rom.HOF rom.s
 
-h2.vcd : h2 rom.hex
+h2.vcd h2.crit : h2 rom.hex
 	./h2
 
 clean:
-	rm -f h2 h2.vcd *.o *~ rom.hex rom.bin rom.HOF
+	rm -f h2 h2.vcd h2.crit *.o *~ rom.hex rom.bin rom.HOF

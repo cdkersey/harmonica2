@@ -52,10 +52,7 @@ void Execute(splitter_sched_t &out, splitter_pred_t &pwb, splitter_reg_t &rwb,
   vec<N_FU, reg_func_t> fu_inputs;
   vec<N_FU, func_splitter_t> fu_outputs;
 
-  Buffer<1>(fu_router_in_postbuf, fu_router_in);
-
-  // TODO: ???
-  Router(fu_inputs, RouteFunc, fu_router_in_postbuf);
+  Router(fu_inputs, RouteFunc, fu_router_in);
 
   Funcunit_alu(fu_outputs[FU_ALU], fu_inputs[FU_ALU]);
   Funcunit_plu(fu_outputs[FU_PLU], fu_inputs[FU_PLU]);
