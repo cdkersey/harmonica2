@@ -24,12 +24,15 @@ void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
 
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
 
+  bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
+
   // Connect "in" to "req"
   _(in, "ready") = _(req, "ready");
   _(req, "valid") = _(in, "valid");
   _(_(req, "contents"), "warp") = _(_(in, "contents"), "warp");
   _(_(req, "contents"), "wr") = inst.is_store();
-  _(_(req, "contents"), "mask") = _(_(_(in, "contents"), "pval"), "pmask");
+  _(_(req, "contents"), "mask") =
+    _(_(_(in, "contents"), "pval"), "pmask") & active;
   for (unsigned l = 0; l < L; ++l) {
     _(_(req, "contents"), "a")[l] =
       Mux(inst.is_store(), 

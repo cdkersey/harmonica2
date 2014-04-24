@@ -20,6 +20,8 @@ void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
   node ready(_(out, "ready")), next_full, full(Reg(next_full));
   _(in, "ready") = ready || !full;
 
+  bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
+
   // TODO: is "full" defined correctly?
   Cassign(next_full).
     IF(!full).
@@ -39,7 +41,7 @@ void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
   _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
 
   _(_(_(out, "contents"), "rwb"), "mask") =
-    Wreg(ldregs, bvec<L>(inst.has_rdst()) & pmask); // TODO: and w/ active lanes
+    Wreg(ldregs, bvec<L>(inst.has_rdst()) & pmask & active);
   _(_(_(out, "contents"), "rwb"), "dest") = Wreg(ldregs, inst.get_rdst());
   _(_(_(out, "contents"), "rwb"), "wid") =
     Wreg(ldregs, _(_(_(in, "contents"), "warp"), "id"));
@@ -75,6 +77,10 @@ void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
     _(_(_(out, "contents"), "rwb"), "val")[l] = Wreg(ldregs, out_val[l]);
   }
 
+  _(_(_(out, "contents"), "rwb"), "clone") = inst.is_clone();
+  _(_(_(out, "contents"), "rwb"), "clonedest") =
+    _(_(_(in, "contents"), "rval"), "val0")[0][range<0, LL-1>()];
+
   tap("alu_full", full);
   tap("alu_out", out);
   tap("alu_in", in);
@@ -88,6 +94,8 @@ void Funcunit_plu(func_splitter_t &out, reg_func_t &in) {
 
   node ready(_(out, "ready")), next_full, full(Reg(next_full));
   _(in, "ready") = ready || !full;
+
+  bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
 
   Cassign(next_full).
     IF(!full).
@@ -109,7 +117,7 @@ void Funcunit_plu(func_splitter_t &out, reg_func_t &in) {
   bvec<L> pmask(_(_(_(in, "contents"), "pval"), "pmask"));
 
   _(_(_(out, "contents"), "pwb"), "mask") =
-    Wreg(ldregs, bvec<L>(inst.has_pdst()) & pmask); // TODO: and w/ active lanes
+    Wreg(ldregs, bvec<L>(inst.has_pdst()) & pmask & active);
   _(_(_(out, "contents"), "pwb"), "dest") = Wreg(ldregs, inst.get_pdst());
 
   bvec<L> out_val;

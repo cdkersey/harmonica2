@@ -25,6 +25,7 @@ void Funcuint_div(func_splitter_t &out, reg_func_t &in);
 void Funcunit_mult(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_ENTER();
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
+  bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
 
   node imm(inst.get_opcode()[4]), busy, start,
        next_full, full(Reg(next_full));
@@ -51,7 +52,7 @@ void Funcunit_mult(func_splitter_t &out, reg_func_t &in) {
 
   _(_(out, "contents"), "warp") = Wreg(start, _(_(in, "contents"), "warp"));
   _(_(_(out, "contents"), "rwb"), "dest") = Wreg(start, inst.get_rdst());
-  _(_(_(out, "contents"), "rwb"), "mask") = Wreg(start, pmask);
+  _(_(_(out, "contents"), "rwb"), "mask") = Wreg(start, pmask & active);
   _(_(_(out, "contents"), "rwb"), "val") = mulOut;
   _(_(_(out, "contents"), "rwb"), "wid") =
     Wreg(start, _(_(_(in, "contents"), "warp"), "id"));
@@ -79,6 +80,8 @@ void Funcuint_div(func_splitter_t &out, reg_func_t &in) {
                    b(_(_(_(in,"contents"),"rval"),"val1")),
                    q, r;
 
+  bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
+
   for (unsigned l = 0; l < L; ++l) {
     SerialDiv(q[l], r[l], valid[l], ready[l],
               a[l], Mux(imm, b[l], immVal), start, !_(out, "ready"));
@@ -92,7 +95,7 @@ void Funcuint_div(func_splitter_t &out, reg_func_t &in) {
 
   _(_(out, "contents"), "warp") = Wreg(start, _(_(in, "contents"), "warp"));
   _(_(_(out, "contents"), "rwb"), "dest") = Wreg(start, inst.get_rdst());
-  _(_(_(out, "contents"), "rwb"), "mask") = Wreg(start, pmask);
+  _(_(_(out, "contents"), "rwb"), "mask") = Wreg(start, pmask & active);
   _(_(_(out, "contents"), "rwb"), "wid") =
     Wreg(start, _(_(_(in, "contents"), "warp"), "id"));
   for (unsigned l = 0; l < L; ++l)
