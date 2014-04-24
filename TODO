@@ -1,3 +1,5 @@
+- Write a test that covers all instructions and produces predictable,
+  automatically verifiable results.
 - Write memory mapped IO module using address-based routing module
 - Add lane/warp control instructions
 

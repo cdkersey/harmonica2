@@ -31,6 +31,8 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
 
   node ldregs(ready || !full);
 
+  bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
+
   _(out, "valid") = Reg(_(in, "valid")) || full;
   _(_(_(out, "contents"), "warp"), "state") =
     Wreg(ldregs, _(_(_(in, "contents"), "warp"), "state"));
@@ -42,7 +44,7 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
   bvec<L> pmask(_(_(_(in, "contents"), "pval"), "pmask"));
 
   _(_(_(out, "contents"), "rwb"), "mask") =
-    Wreg(ldregs, bvec<L>(inst.has_rdst()) & pmask); // TODO: and w/ active lanes
+    Wreg(ldregs, bvec<L>(inst.has_rdst()) & pmask & active);
   _(_(_(out, "contents"), "rwb"), "wid") =
     Wreg(ldregs, _(_(_(in, "contents"), "warp"), "id"));
   _(_(_(out, "contents"), "rwb"), "dest") = Wreg(ldregs, inst.get_rdst());

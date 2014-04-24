@@ -108,7 +108,8 @@ void RouteFunc(bvec<N_FU> &valid, const reg_func_int_t &in, node in_valid) {
     inst.get_opcode() == Lit<6>(0x15) || // subi
     inst.get_opcode() == Lit<6>(0x19) || // shli
     inst.get_opcode() == Lit<6>(0x1a) || // shri
-    inst.get_opcode() == Lit<6>(0x25);   // ldi
+    inst.get_opcode() == Lit<6>(0x25) || // ldi
+    inst.get_opcode() == Lit<6>(0x1f);   // clone
 
   v[FU_PLU] =
     inst.get_opcode() == Lit<6>(0x26) || // rtop
