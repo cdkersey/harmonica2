@@ -136,8 +136,11 @@ void RouteFunc(bvec<N_FU> &valid, const reg_func_int_t &in, node in_valid) {
 
   v[FU_BRANCH] =
     inst.get_opcode() == Lit<6>(0x1b) || // jali
+    inst.get_opcode() == Lit<6>(0x20) || // jalis
     inst.get_opcode() == Lit<6>(0x1c) || // jalr
+    inst.get_opcode() == Lit<6>(0x21) || // jalrs
     inst.get_opcode() == Lit<6>(0x1e) || // jmpr
+    inst.get_opcode() == Lit<6>(0x22) || // jmprt
     inst.get_opcode() == Lit<6>(0x1d); // jmpi
 
   valid = v & bvec<N_FU>(in_valid);
