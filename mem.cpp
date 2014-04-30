@@ -182,10 +182,15 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
   tap("mem_aReg", aReg);  tap("mem_dReg", dReg); tap("mem_qReg", qReg);
 
   for (unsigned i = 0; i < LINE; ++i) {
+    const unsigned NB(CLOG2(N/8)), // log2(N), expressed in (8-bit) bytes
+                   LB(NB + CLOG2(LINE)); // log2(bytes in a cache line)
+
     bvec<L> maskBits;
-    // TODO: D.R.Y. (log2 of line size in bytes)
     for (unsigned l = 0; l < L; ++l)
-      maskBits[l] = (aReg[l][range<CLOG2(N/8), CLOG2((N/8)*LINE)-1>()] == Lit<CLOG2(LINE)>(i)) && (aReg[l][range<CLOG2((N/8)*LINE), N-1>()] == reqAddr[range<CLOG2((N/8)*LINE), N-1>()]);
+      maskBits[l] =
+        (aReg[l][range<NB, LB-1>()]==Lit<CLOG2(LINE)>(i)) &&
+        (aReg[l][range<LB, N-1>()] == reqAddr[range<LB, N-1>()]) &&
+        allReqMask[l];
     
     _(_(cache_req, "contents"), "mask")[i] = OrN(maskBits);
     _(_(cache_req, "contents"), "d")[i] = Mux(Log2(maskBits), dReg);
