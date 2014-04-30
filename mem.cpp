@@ -2,6 +2,7 @@
 
 #include <chdl/chdl.h>
 #include <chdl/cassign.h>
+#include <chdl/egress.h>
 
 #include "config.h"
 #include "interfaces.h"
@@ -90,6 +91,16 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
     node wr(_(_(in, "contents"), "mask")[i] && _(_(in, "contents"), "wr"));
 
     memq[i] = Syncmem(devAddr, memd[i], wr);
+
+    if (i == 0 && SOFT_IO) {
+      static unsigned consoleOutVal;
+      node wrConsole(wr && a[N-1]);
+      EgressInt(consoleOutVal, memd[i]);
+      EgressFunc(
+        [](bool x){if (x) cout << char(consoleOutVal);},
+        wrConsole
+      );
+    }
   }
 
   vec<LINE, bvec<N> > held_memq;
