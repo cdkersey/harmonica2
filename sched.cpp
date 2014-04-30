@@ -22,10 +22,11 @@ void Starter(splitter_sched_t &out) {
   node firstCyc(Reg(Lit(0), 1));
 
   _(out, "valid") = firstCyc;
-  _(_(out, "contents"), "state") = Lit<SS>(TS_USER); // TODO: TS_KERNEL
-  _(_(out, "contents"), "pc") = Lit<N>(0);
-  _(_(out, "contents"), "active") = Lit<L>(1);
-  _(_(out, "contents"), "id") = Lit<WW>(1);
+  // TODO: TS_KERNEL
+  _(_(_(out, "contents"), "warp"), "state") = Lit<SS>(TS_USER);
+  _(_(_(out, "contents"), "warp"), "pc") = Lit<N>(0);
+  _(_(_(out, "contents"), "warp"), "active") = Lit<L>(1);
+  _(_(_(out, "contents"), "warp"), "id") = Lit<WW>(1);
 
   ASSERT(!(firstCyc && !_(out, "ready")));
   HIERARCHY_EXIT();
@@ -33,10 +34,16 @@ void Starter(splitter_sched_t &out) {
 
 void Sched(sched_fetch_t &out, splitter_sched_t &in) {
   HIERARCHY_ENTER();
-  splitter_sched_t starter_out, buf_in; Starter(starter_out);
+  splitter_sched_t starter_out, arb_out; Starter(starter_out);
+  sched_fetch_t buf_in;
   vec<2, splitter_sched_t> arb_in = {in, starter_out};
-  Arbiter(buf_in, ArbUniq<2>, arb_in);
+  Arbiter(arb_out, ArbUniq<2>, arb_in);
   TAP(starter_out);
+
+  _(arb_out, "ready") = _(buf_in, "ready");
+  _(buf_in, "valid") = _(arb_out, "valid");
+  _(buf_in, "contents") = _(_(arb_out, "contents"), "warp");
+
   Buffer<WW>(out, buf_in);
   TAP(buf_in); TAP(in);
   HIERARCHY_EXIT();

@@ -80,7 +80,7 @@ void Execute(splitter_sched_t &out, splitter_pred_t &pwb, splitter_reg_t &rwb,
   _(rwb, "valid") = _(fu_arbiter_out, "valid");
   _(pwb, "contents") = _(_(fu_arbiter_out, "contents"), "pwb");
   _(rwb, "contents") = _(_(fu_arbiter_out, "contents"), "rwb");
-  _(out, "contents") = _(_(fu_arbiter_out, "contents"), "warp"); 
+  _(_(out, "contents"), "warp") = _(_(fu_arbiter_out, "contents"), "warp"); 
 
   HIERARCHY_EXIT();
 }

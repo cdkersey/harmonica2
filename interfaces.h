@@ -77,7 +77,10 @@ namespace chdl {
   typedef flit<pwb_t> splitter_pred_t;
 
   // Splitter->Sched
-  typedef flit<warp_t> splitter_sched_t;
+  typedef flit<ag<STP("warp"), warp_t, 
+               ag<STP("spawn"), node,
+               ag<STP("spawn_pc"), bvec<N>,
+               ag<STP("spawn_id"), bvec<WW> > > > > > splitter_sched_t;
 
   // Memory Request
   typedef flit<ag<STP("warp"), warp_t,
