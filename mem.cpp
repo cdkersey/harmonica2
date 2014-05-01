@@ -158,7 +158,10 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
     }
     aReg[l] = Wreg(fill, a[l]);
     dReg[l] = Wreg(fill, _(_(in, "contents"), "d")[l]);
-    qReg[l] = Wreg(ldqReg[l], Mux(aReg[l][range<CLOG2(N/8), CLOG2(N/8*LINE)-1>()], _(_(cache_resp,"contents"),"q")));
+    qReg[l] = Wreg(ldqReg[l],
+                   Mux(aReg[l][range<CLOG2(N/8), CLOG2(N/8*LINE)-1>()],
+                       _(_(cache_resp,"contents"),"q")) >>
+                   Cat(aReg[l][range<0, 1>()], Lit<3>(0)));
   }
 
   bvec<LL> sel(Lsb(allReqMask & ~sentReqMask));
@@ -219,10 +222,6 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
   _(out, "valid") = full && (returnedReqMask == allReqMask);
 
   _(_(out, "contents"), "warp") = Wreg(fill, _(_(in, "contents"), "warp"));
-  // TODO: Why did we ever do this? 
-  // _(_(out, "contents"), "warp") =
-  //   Wreg(_(cache_resp, "valid") && _(cache_resp, "ready"),
-  //           _(_(cache_resp, "contents"), "warp"));
   _(_(out, "contents"), "q") = qReg;
 
   empty = _(out, "valid") && _(out, "ready");

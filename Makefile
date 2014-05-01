@@ -2,7 +2,7 @@ CXXFLAGS = -std=c++11 -O3 -DDEBUG
 LDLIBS = -lchdl
 ARCH = 4w8/8/1
 
-all : rom.vcd
+all : sieve.vcd
 
 h2: regfile.o h2.o alu.o exec.o sched.o fetch.o mem.o muldiv.o branch.o
 	$(CXX) $(LDFLAGS) -o h2 $^ $(LDLIBS)
@@ -29,7 +29,7 @@ branch.o: branch.cpp config.h interfaces.h
 	harptool -A --arch $(ARCH) -o $@ $<
 
 %.vcd : %.hex h2
-	./h2 $< $@
+	./h2 $< $@ | tee $*.out
 
 clean:
-	rm -f h2 *.vcd h2.crit *.o *~ *.hex *.bin *.HOF
+	rm -f h2 *.vcd h2.crit *.o *~ *.hex *.bin *.HOF *.out

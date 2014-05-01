@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
   // Run the simulation
   string vcdFile(argc < 2 ? "h2.vcd" : argv[2]);
   ofstream vcd(vcdFile);
-  run(vcd, 6000);
+  run(vcd, 10000);
 
   return 0;
 }
