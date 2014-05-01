@@ -1,4 +1,5 @@
 #include <fstream>
+#include <string>
 
 #include <chdl/chdl.h>
 #include <chdl/cassign.h>
@@ -15,13 +16,13 @@ void Harmonica2();
 
 // The pipeline stages
 void Sched(sched_fetch_t &out, splitter_sched_t &in);
-void Fetch(fetch_pred_t &out, sched_fetch_t &in);
+void Fetch(fetch_pred_t &out, sched_fetch_t &in, string romFile);
 void PredRegs(pred_reg_t &out, fetch_pred_t &in, splitter_pred_t &wb);
 void GpRegs(reg_func_t &out, pred_reg_t &in, splitter_reg_t &wb);
 void Execute(splitter_sched_t&, splitter_pred_t&, splitter_reg_t&, reg_func_t&);
 
 // Implementations
-void Harmonica2() {
+void Harmonica2(string romFile) {
   HIERARCHY_ENTER();
 
   // Assemble the pipeline
@@ -34,7 +35,7 @@ void Harmonica2() {
   splitter_reg_t xr;
 
   Sched(sf, xs);
-  Fetch(fp, sf);
+  Fetch(fp, sf, romFile);
   PredRegs(pr, fp, xp);
   GpRegs(rx, pr, xr);
   Execute(xs, xp, xr, rx);
@@ -46,7 +47,8 @@ void Harmonica2() {
 
 int main(int argc, char **argv) {
   // Instantiate the processor
-  Harmonica2();
+  string romFile(argc == 1 ? "rom.hex" : argv[1]);
+  Harmonica2(romFile);
 
   // Optimization/simulation
   if (cycdet()) return 1;
@@ -56,8 +58,10 @@ int main(int argc, char **argv) {
   ofstream cp_report("h2.crit");
   critpath_report(cp_report);
 
-  ofstream vcd("h2.vcd");
-  run(vcd, 10000);
+  // Run the simulation
+  string vcdFile(argc < 2 ? "h2.vcd" : argv[2]);
+  ofstream vcd(vcdFile);
+  run(vcd, 6000);
 
   return 0;
 }

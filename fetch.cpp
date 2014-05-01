@@ -1,4 +1,5 @@
 #include <fstream>
+#include <string>
 
 #include <chdl/chdl.h>
 #include <chdl/cassign.h>
@@ -10,10 +11,10 @@
 using namespace std;
 using namespace chdl;
 
-void Fetch(fetch_pred_t &out, sched_fetch_t &in);
+void Fetch(fetch_pred_t &out, sched_fetch_t &in, string romFile);
 
 // We're foregoing an icache for now and just using a simple instruction ROM
-void Fetch(fetch_pred_t &out, sched_fetch_t &in) {
+void Fetch(fetch_pred_t &out, sched_fetch_t &in, string romFile) {
   HIERARCHY_ENTER();
   node ready(_(out, "ready"));
 
@@ -26,7 +27,7 @@ void Fetch(fetch_pred_t &out, sched_fetch_t &in) {
   );
 
   _(_(out, "contents"), "ir") = Wreg(ready,
-    LLRom<CLOG2(ROMSZ), N>(a, "rom.hex")
+    LLRom<CLOG2(ROMSZ), N>(a, romFile)
   );
   HIERARCHY_EXIT();
 }
