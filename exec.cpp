@@ -80,7 +80,10 @@ void Execute(splitter_sched_t &out, splitter_pred_t &pwb, splitter_reg_t &rwb,
   _(rwb, "valid") = _(fu_arbiter_out, "valid");
   _(pwb, "contents") = _(_(fu_arbiter_out, "contents"), "pwb");
   _(rwb, "contents") = _(_(fu_arbiter_out, "contents"), "rwb");
-  _(_(out, "contents"), "warp") = _(_(fu_arbiter_out, "contents"), "warp"); 
+  _(_(out, "contents"), "warp") = _(_(fu_arbiter_out, "contents"), "warp");
+  _(_(out, "contents"), "spawn") = _(_(fu_arbiter_out, "contents"), "spawn");
+  _(_(out, "contents"), "spawn_pc") =
+     _(_(fu_arbiter_out, "contents"), "spawn_pc");
 
   HIERARCHY_EXIT();
 }
@@ -141,7 +144,8 @@ void RouteFunc(bvec<N_FU> &valid, const reg_func_int_t &in, node in_valid) {
     inst.get_opcode() == Lit<6>(0x21) || // jalrs
     inst.get_opcode() == Lit<6>(0x1e) || // jmpr
     inst.get_opcode() == Lit<6>(0x22) || // jmprt
-    inst.get_opcode() == Lit<6>(0x1d); // jmpi
+    inst.get_opcode() == Lit<6>(0x1d) || // jmpi
+    inst.get_opcode() == Lit<6>(0x3a);   // wspawn
 
   valid = v & bvec<N_FU>(in_valid);
 }

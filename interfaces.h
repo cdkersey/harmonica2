@@ -67,8 +67,10 @@ namespace chdl {
 
   // FU->Arbiter, Arbiter->Splitter
   typedef flit<ag<STP("warp"), warp_t,
+               ag<STP("spawn"), node,
+               ag<STP("spawn_pc"), bvec<N>,
                ag<STP("rwb"), rwb_t,
-               ag<STP("pwb"), pwb_t> > > > func_splitter_t;
+               ag<STP("pwb"), pwb_t> > > > > > func_splitter_t;
 
   // Splitter->Register
   typedef flit<rwb_t> splitter_reg_t;
@@ -79,8 +81,7 @@ namespace chdl {
   // Splitter->Sched
   typedef flit<ag<STP("warp"), warp_t, 
                ag<STP("spawn"), node,
-               ag<STP("spawn_pc"), bvec<N>,
-               ag<STP("spawn_id"), bvec<WW> > > > > > splitter_sched_t;
+               ag<STP("spawn_pc"), bvec<N> > > > > splitter_sched_t;
 
   // Memory Request
   typedef flit<ag<STP("warp"), warp_t,

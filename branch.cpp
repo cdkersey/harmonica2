@@ -78,11 +78,16 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
       IF(inst.get_opcode() == Lit<6>(0x1b)
          || inst.get_opcode() == Lit<6>(0x1d) // jali[s], jmpi
          || inst.get_opcode() == Lit<6>(0x20), pc+inst.get_imm()).
-      ELSE(Lit<N>(0)).
+      ELSE(pc).
     END().
     ELSE(pc);
 
   _(_(_(out, "contents"), "warp"), "pc") = Wreg(ldregs, out_pc);
+
+  // Handle the wspawn instruction
+  _(_(out, "contents"), "spawn") =
+    Wreg(ldregs, inst.get_opcode() == Lit<6>(0x3a));
+  _(_(out, "contents"), "spawn_pc") = Wreg(ldregs, rval0);
 
   tap("branch_full", full);
   tap("branch_out", out);
