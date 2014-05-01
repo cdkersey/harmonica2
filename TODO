@@ -2,8 +2,10 @@
   automatically verifiable results.
 - Write memory mapped IO module using address-based routing module
 - Add lane/warp control instructions
+  - Add clone
+  - Add jalis/jalrs
 
-Lane control:           clone (clonew)
+Lane control:           (clonew)
 Kernel mode/exceptions: di  ei  skep  halt  trap  jmpru  reti
 Floating point:         itof  ftoi  fadd  fsub  fmul  fdiv  fneg
 Virtual memory:         tlbadd  tlbflush  tlbrm
