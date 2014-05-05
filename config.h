@@ -3,7 +3,7 @@
 
 #include <chdl/chdl.h>
 
-const unsigned W(2),        // Total warps
+const unsigned W(4),        // Total warps
                L(4),        // Number of SIMD lanes
                N(32),       // Number of bits in a machine word
                R(8),        // Number of registers (and predicate registers)
@@ -15,7 +15,7 @@ const unsigned W(2),        // Total warps
 const unsigned WW(chdl::CLOG2(W)), RR(chdl::CLOG2(R)), LL(chdl::CLOG2(L)),
                NN(chdl::CLOG2(N));
 
-// Enable this to use software I/O. Will display console output to stdout
-const bool SOFT_IO(true);
+const bool SOFT_IO(true),   // Software I/O. Console output to stdout
+           DEBUG_MEM(true); // Print all memory operations to stderr
 
 #endif

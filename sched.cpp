@@ -26,7 +26,7 @@ void Starter(splitter_sched_t &out) {
   _(_(_(out, "contents"), "warp"), "state") = Lit<SS>(TS_USER);
   _(_(_(out, "contents"), "warp"), "pc") = Lit<N>(0);
   _(_(_(out, "contents"), "warp"), "active") = Lit<L>(1);
-  _(_(_(out, "contents"), "warp"), "id") = Lit<WW>(1);
+  _(_(_(out, "contents"), "warp"), "id") = Lit<WW>(0);
 
   ASSERT(!(firstCyc && !_(out, "ready")));
   HIERARCHY_EXIT();
@@ -40,11 +40,33 @@ void Sched(sched_fetch_t &out, splitter_sched_t &in) {
   Arbiter(arb_out, ArbUniq<2>, arb_in);
   TAP(starter_out);
 
-  _(arb_out, "ready") = _(buf_in, "ready");
-  _(buf_in, "valid") = _(arb_out, "valid");
-  _(buf_in, "contents") = _(_(arb_out, "contents"), "warp");
+  node next_spawnState, spawnState(Reg(next_spawnState)),
+       ldspawn(!spawnState && _(buf_in, "ready") && _(in, "valid")
+               && _(_(in, "contents"), "spawn"));
+
+
+  Cassign(next_spawnState).
+    IF(spawnState && _(buf_in, "ready"), Lit(0)).
+    IF(ldspawn, Lit(1)).
+    ELSE(spawnState);
+
+  
+  warp_t spawnWarp;
+  _(spawnWarp, "state") = Lit<SS>(TS_USER);
+  _(spawnWarp, "pc") = Wreg(ldspawn, _(_(in, "contents"), "spawn_pc"));
+  _(spawnWarp, "active") = Lit<L>(1);
+  _(spawnWarp, "id") = Wreg(ldspawn, _(spawnWarp, "id") + Lit<WW>(1));
+
+  _(arb_out, "ready") = _(buf_in, "ready") && !spawnState;
+  _(buf_in, "valid") = _(arb_out, "valid") || spawnState;
+  const unsigned WARPSZ(sz<warp_t>::value);
+  _(buf_in, "contents") = Mux(spawnState,
+                            bvec<WARPSZ>(_(_(arb_out, "contents"), "warp")),
+                            bvec<WARPSZ>(spawnWarp));
 
   Buffer<WW>(out, buf_in);
   TAP(buf_in); TAP(in);
+  TAP(spawnState);
+  TAP(next_spawnState);
   HIERARCHY_EXIT();
 }

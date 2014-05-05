@@ -88,7 +88,8 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
   vec<LINE, bvec<N> > memd(_(_(in, "contents"), "d"));
   vec<LINE, bvec<N> > memq;
   for (unsigned i = 0; i < LINE; ++i) {
-    node wr(_(_(in, "contents"), "mask")[i] && _(_(in, "contents"), "wr"));
+    node wr(ready && _(in, "valid") && _(_(in, "contents"), "mask")[i] &&
+              _(_(in, "contents"), "wr"));
 
     memq[i] = Syncmem(devAddr, memd[i], wr);
 
@@ -101,6 +102,32 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
         wrConsole
       );
     }
+  }
+
+  if (DEBUG_MEM) {
+    static unsigned long addrVal, dVal[LINE], qVal[LINE];
+    static bool wrVal, maskVal[LINE];
+    Egress(wrVal, Reg(ready && _(in, "valid") && _(_(in, "contents"), "wr")));
+    for (unsigned l = 0; l < LINE; ++l) {
+      EgressInt(dVal[l], Reg(memd[l]));
+      Egress(maskVal[l], Reg(_(_(in, "contents"), "mask")[l]));
+      EgressInt(qVal[l], memq[l]);
+    }
+
+    EgressInt(addrVal, Reg(a));
+    EgressFunc([](bool x) {
+      if (x) {
+        cout << "Mem " << (wrVal?"store":"load") << ':' << endl;
+        for (unsigned l = 0; l < LINE; ++l) {
+          if (maskVal[l]) {
+            cout << "  0x" << hex << addrVal + l*(N/8);
+            if (wrVal) cout << hex << ": 0x" << dVal[l];
+            else cout << hex << ": 0x" << qVal[l];
+            cout << endl;
+          }
+        }
+      }
+    }, Reg(ready && _(in, "valid")));
   }
 
   vec<LINE, bvec<N> > held_memq;
@@ -158,7 +185,7 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
     }
     aReg[l] = Wreg(fill, a[l]);
     dReg[l] = Wreg(fill, _(_(in, "contents"), "d")[l]);
-    qReg[l] = Wreg(ldqReg[l],
+    qReg[l] = Wreg(ldqReg[l] && _(cache_resp,"valid") && _(cache_resp,"ready"),
                    Mux(aReg[l][range<CLOG2(N/8), CLOG2(N/8*LINE)-1>()],
                        _(_(cache_resp,"contents"),"q")) >>
                    Cat(aReg[l][range<0, 1>()], Lit<3>(0)));
