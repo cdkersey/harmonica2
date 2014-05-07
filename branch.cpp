@@ -29,7 +29,7 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
 
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
 
-  node ldregs(ready || !full);
+  node ldregs(_(in, "valid") && _(in, "ready"));
 
   bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
 

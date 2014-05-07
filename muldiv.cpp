@@ -25,9 +25,9 @@ void Funcuint_div(func_splitter_t &out, reg_func_t &in);
 void Funcunit_mult(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_ENTER();
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
-  bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
+  bvec<L> active(_(_(_(in, "contents"), "warp"), "active")), busy;
 
-  node imm(inst.get_opcode()[4]), busy, start,
+  node imm(inst.get_opcode()[4]), start,
        next_full, full(Reg(next_full));
 
   bvec<N> immVal(inst.get_imm());
@@ -37,16 +37,16 @@ void Funcunit_mult(func_splitter_t &out, reg_func_t &in) {
                    mulOut;
 
   for (unsigned l = 0; l < L; ++l)
-    mulOut[l] = SerialMul(busy, a[l], Mux(imm, b[l], immVal), start);
+    mulOut[l] = SerialMul(busy[l], a[l], Mux(imm, b[l], immVal), start);
 
   Cassign(next_full).
     IF(start, Lit(1)).
-    IF(!busy && _(out, "ready"), Lit(0)).
+    IF(!OrN(busy) && _(out, "ready"), Lit(0)).
     ELSE(full);
 
-  _(in, "ready") = !busy && !full;
+  _(in, "ready") = !OrN(busy) && !full;
   start = _(in, "valid") && _(in, "ready");
-  _(out, "valid") = full && !busy;
+  _(out, "valid") = full && !OrN(busy);
 
   bvec<L> pmask(_(_(_(in, "contents"), "pval"), "pmask"));
 
@@ -58,7 +58,7 @@ void Funcunit_mult(func_splitter_t &out, reg_func_t &in) {
     Wreg(start, _(_(_(in, "contents"), "warp"), "id"));
 
   tap("mul_full", full);
-  tap("mul_busy", busy);
+  tap("mul_busy", OrN(busy));
   tap("mul_start", start);
   tap("mul_in", in);
   tap("mul_out", out);
@@ -148,6 +148,17 @@ template <unsigned N>
     IF(busy && !shrreg[0] && shrreg[1], resultreg + shlreg2).
     IF(busy && shrreg[0] && shrreg[1], resultreg + shlreg3).
     ELSE(resultreg);
+
+  static bool tapped(false);
+  if (!tapped) {
+    tap("mul_resultreg", resultreg);
+    tap("mul_state", state);
+    tap("mul_shrreg", shrreg);
+    tap("mul_shlreg", shlreg);
+    tap("mul_shlreg2", shlreg2);
+    tap("mul_shlreg3", shlreg3);
+    tapped = true;
+  }
 
   return resultreg;
 }

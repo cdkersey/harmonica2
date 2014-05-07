@@ -35,7 +35,7 @@ void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
 
   bvec<L> pmask(_(_(_(in, "contents"), "pval"), "pmask"));
 
-  node ldregs(ready || !full);
+  node ldregs(_(in, "valid") && _(in, "ready"));
 
   _(out, "valid") = Reg(_(in, "valid")) || full;
   _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
@@ -99,7 +99,7 @@ void Funcunit_plu(func_splitter_t &out, reg_func_t &in) {
 
   Cassign(next_full).
     IF(!full).
-      IF(_(in, "valid") && !_(out, "ready"), Lit(1)).
+      IF(_(out, "valid") && !_(out, "ready"), Lit(1)).
       ELSE(Lit(0)).
     END().ELSE().
       IF(_(out, "ready"), Lit(0)).
@@ -107,7 +107,7 @@ void Funcunit_plu(func_splitter_t &out, reg_func_t &in) {
 
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
 
-  node ldregs(ready || !full);
+  node ldregs(_(in, "valid") && _(in, "ready"));
 
   _(out, "valid") = Reg(_(in, "valid")) || full;
   _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
@@ -140,6 +140,7 @@ void Funcunit_plu(func_splitter_t &out, reg_func_t &in) {
 
   _(_(_(out, "contents"), "pwb"), "val") = Wreg(ldregs, out_val);
 
+  tap("plu_ldregs", ldregs);
   tap("plu_full", full);
   tap("plu_out", out);
   tap("plu_in", in);
