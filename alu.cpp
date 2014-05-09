@@ -18,33 +18,31 @@ void Funcunit_plu(func_splitter_t &out, reg_func_t &in);
 void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_ENTER();
   node ready(_(out, "ready")), next_full, full(Reg(next_full));
-  _(in, "ready") = ready || !full;
+  _(in, "ready") = !full || ready;
+
+  Cassign(next_full).
+    IF(full && _(out, "ready") && !_(in, "valid"), Lit(0)).
+    IF(!full && _(in, "valid"), Lit(1)).
+    ELSE(full);
 
   bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
-
-  // TODO: is "full" defined correctly?
-  Cassign(next_full).
-    IF(!full).
-      IF(_(in, "valid") && !_(out, "ready"), Lit(1)).
-      ELSE(Lit(0)).
-    END().ELSE().
-      IF(_(out, "ready"), Lit(0)).
-      ELSE(Lit(1));
 
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
 
   bvec<L> pmask(_(_(_(in, "contents"), "pval"), "pmask"));
 
+
   node ldregs(_(in, "valid") && _(in, "ready"));
 
-  _(out, "valid") = Reg(_(in, "valid")) || full;
+
+  _(out, "valid") = full;
   _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
 
   _(_(_(out, "contents"), "rwb"), "mask") =
     Wreg(ldregs, bvec<L>(inst.has_rdst()) & pmask & active);
   _(_(_(out, "contents"), "rwb"), "dest") = Wreg(ldregs, inst.get_rdst());
   _(_(_(out, "contents"), "rwb"), "wid") =
-    Wreg(ldregs, _(_(_(in, "contents"), "warp"), "id"));
+    Wreg(ldregs, _(_(_(in, "contents"), "warp"), "id"    ));
 
   vec<L, bvec<N> > out_val;
 
@@ -91,25 +89,21 @@ void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
 // Predicate Logic Unit
 void Funcunit_plu(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_ENTER();
-
   node ready(_(out, "ready")), next_full, full(Reg(next_full));
-  _(in, "ready") = ready || !full;
-
-  bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
+  _(in, "ready") = !full || ready;
 
   Cassign(next_full).
-    IF(!full).
-      IF(_(out, "valid") && !_(out, "ready"), Lit(1)).
-      ELSE(Lit(0)).
-    END().ELSE().
-      IF(_(out, "ready"), Lit(0)).
-      ELSE(Lit(1));
+    IF(full && _(out, "ready") && !_(in, "valid"), Lit(0)).
+    IF(!full && _(in, "valid"), Lit(1)).
+    ELSE(full);
+
+  bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
 
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
 
   node ldregs(_(in, "valid") && _(in, "ready"));
 
-  _(out, "valid") = Reg(_(in, "valid")) || full;
+  _(out, "valid") = full;
   _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
   _(_(_(out, "contents"), "pwb"), "wid") =
     Wreg(ldregs, _(_(_(in, "contents"), "warp"), "id"));

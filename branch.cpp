@@ -16,16 +16,14 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in);
 void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_ENTER();
   bvec<N> pc(_(_(_(in, "contents"), "warp"), "pc"));
+
   node ready(_(out, "ready")), next_full, full(Reg(next_full));
-  _(in, "ready") = ready || !full;
+  _(in, "ready") = !full || ready;
 
   Cassign(next_full).
-    IF(!full).
-      IF(_(in, "valid") && !_(out, "ready"), Lit(1)).
-      ELSE(Lit(0)).
-    END().ELSE().
-      IF(_(out, "ready"), Lit(0)).
-      ELSE(Lit(1));
+    IF(full && _(out, "ready") && !_(in, "valid"), Lit(0)).
+    IF(!full && _(in, "valid"), Lit(1)).
+    ELSE(full);
 
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
 
@@ -33,7 +31,7 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
 
   bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
 
-  _(out, "valid") = Reg(_(in, "valid")) || full;
+  _(out, "valid") = full;
   _(_(_(out, "contents"), "warp"), "state") =
     Wreg(ldregs, _(_(_(in, "contents"), "warp"), "state"));
   _(_(_(out, "contents"), "warp"), "id") =
