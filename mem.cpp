@@ -105,7 +105,7 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
   }
 
   if (DEBUG_MEM) {
-    static unsigned long addrVal, dVal[LINE], qVal[LINE];
+    static unsigned long addrVal, dVal[LINE], qVal[LINE], warpId;
     static bool wrVal, maskVal[LINE];
     Egress(wrVal, Reg(ready && _(in, "valid") && _(_(in, "contents"), "wr")));
     for (unsigned l = 0; l < LINE; ++l) {
@@ -115,9 +115,10 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
     }
 
     EgressInt(addrVal, Reg(a));
+    EgressInt(warpId, Reg(_(_(_(in, "contents"), "warp"), "id")));
     EgressFunc([](bool x) {
       if (x) {
-        cout << "Mem " << (wrVal?"store":"load") << ':' << endl;
+        cout << warpId << ": Mem " << (wrVal?"store":"load") << ':' << endl;
         for (unsigned l = 0; l < LINE; ++l) {
           if (maskVal[l]) {
             cout << "  0x" << hex << addrVal + l*(N/8);
