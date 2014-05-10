@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
   string romFile(argc == 1 ? "rom.hex" : argv[1]);
   Harmonica2(romFile);
 
-  // Optimization/simulation
+  // Optimize and simulate/dump netlist
   if (cycdet()) return 1;
   optimize();
 
@@ -58,10 +58,16 @@ int main(int argc, char **argv) {
   ofstream cp_report("h2.crit");
   critpath_report(cp_report);
 
-  // Run the simulation
-  string vcdFile(argc < 2 ? "h2.vcd" : argv[2]);
-  ofstream vcd(vcdFile);
-  run(vcd, 10000);
+  if (FPGA) {
+    // Emit verilog
+    ofstream vl("h2.v");
+    print_verilog("h2", vl);
+  } else {
+    // Run the simulation
+    string vcdFile(argc < 2 ? "h2.vcd" : argv[2]);
+    ofstream vcd(vcdFile);
+    run(vcd, 10000);
+  }
 
   return 0;
 }

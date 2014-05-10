@@ -93,7 +93,7 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
 
     memq[i] = Syncmem(devAddr, memd[i], wr);
 
-    if (i == 0 && SOFT_IO) {
+    if (i == 0 && SOFT_IO && !FPGA) {
       static unsigned consoleOutVal;
       node wrConsole(wr && a[N-1]);
       EgressInt(consoleOutVal, memd[i]);
@@ -102,9 +102,16 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
         wrConsole
       );
     }
+
+    if (i == 0 && FPGA && FPGA_IO) {    
+      node wrConsole(wr && a[N-1]);
+      OUTPUT(wrConsole);
+      bvec<8> consoleOutVal(memd[i][range<0,7>()]);
+      OUTPUT(consoleOutVal);
+    }
   }
 
-  if (DEBUG_MEM) {
+  if (!FPGA && DEBUG_MEM) {
     static unsigned long addrVal, dVal[LINE], qVal[LINE], warpId;
     static bool wrVal, maskVal[LINE];
     Egress(wrVal, Reg(ready && _(in, "valid") && _(_(in, "contents"), "wr")));
