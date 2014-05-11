@@ -194,9 +194,9 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
     aReg[l] = Wreg(fill, a[l]);
     dReg[l] = Wreg(fill, _(_(in, "contents"), "d")[l]);
     qReg[l] = Wreg(ldqReg[l] && _(cache_resp,"valid") && _(cache_resp,"ready"),
-                   Mux(aReg[l][range<CLOG2(N/8), CLOG2(N/8*LINE)-1>()],
+                   Mux(aReg[l][range<NN-3, NN-3+CLOG2(LINE)-1>()],
                        _(_(cache_resp,"contents"),"q")) >>
-                   Cat(aReg[l][range<0, CLOG2(N/8) - 1>()], Lit<3>(0)));
+                   Cat(aReg[l][range<0, NN-3 - 1>()], Lit<3>(0)));
   }
 
   bvec<LL> sel(Lsb(allReqMask & ~sentReqMask));
