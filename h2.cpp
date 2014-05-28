@@ -62,8 +62,16 @@ int main(int argc, char **argv) {
     // Emit verilog
     ofstream vl("h2.v");
     print_verilog("h2", vl);
-  } else {
-    // Run the simulation
+  }
+
+  if (NETLIST) {
+    // Emit netlist
+    ofstream nl("h2.nand");
+    print_netlist(nl);
+  }
+ 
+  if (SIMULATE) {
+    // Run a simulation
     string vcdFile(argc < 2 ? "h2.vcd" : argv[2]);
     ofstream vcd(vcdFile);
     run(vcd, 10000);
