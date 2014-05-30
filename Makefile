@@ -32,4 +32,4 @@ branch.o: branch.cpp config.h interfaces.h
 	./h2 $< $@ | tee $*.out
 
 clean:
-	rm -f h2 *.vcd h2.crit *.o *~ *.hex *.bin *.HOF *.out
+	rm -f h2 *.vcd h2.crit h2.nand h2.v *.o *~ *.hex *.bin *.HOF *.out
