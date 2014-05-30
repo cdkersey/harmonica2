@@ -92,13 +92,13 @@ void GpRegs(reg_func_t &out, pred_reg_t &in, splitter_reg_t &wb) {
   vec<L, vec<R, vec<2, bvec<N> > > > q;
 
   vec<2, bvec<WW> > a;
-  a[0] = wid;
+  a[0] = Mux(clone, wid, wb_wid);
   a[1] = wb_wid;
 
   for (unsigned l = 0; l < L; ++l) {
     for (unsigned i = 0; i < R; ++i) {
       node wr(wb_mask[l] && wb_dest == Lit<RR>(i) ||
-                wb_clonedest == Lit<LL>(i) && clone);
+                wb_clonedest == Lit<LL>(l) && clone);
       q[l][i] = Syncmem(a, Mux(clone, wb_val[l], clonebus[i]), wb_wid, wr);
     }
   }
