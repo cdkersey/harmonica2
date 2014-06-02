@@ -2,7 +2,6 @@
   automatically verifiable results.
 - Write memory mapped IO module using address-based routing module
 - Add lane/warp control instructions
-  - Add clone
   - Add jalis/jalrs
 
 Lane control:           (clonew)
