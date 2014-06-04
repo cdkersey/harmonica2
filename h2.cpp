@@ -3,6 +3,7 @@
 
 #include <chdl/chdl.h>
 #include <chdl/cassign.h>
+#include <chdl/counter.h>
 
 #include "config.h"
 #include "interfaces.h"
@@ -41,6 +42,9 @@ void Harmonica2(string romFile) {
   Execute(xs, xp, xr, rx);
 
   TAP(sf); TAP(fp); TAP(pr); TAP(rx); TAP(xs); TAP(xp); TAP(xr);
+
+  Counter("cycles", Lit(1));
+  Counter("insts", _(xs, "ready") && _(xs, "valid"));
 
   HIERARCHY_EXIT();
 }
