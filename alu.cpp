@@ -75,9 +75,9 @@ void Funcunit_alu(func_splitter_t &out, reg_func_t &in) {
     _(_(_(out, "contents"), "rwb"), "val")[l] = Wreg(ldregs, out_val[l]);
   }
 
-  _(_(_(out, "contents"), "rwb"), "clone") = inst.is_clone();
+  _(_(_(out, "contents"), "rwb"), "clone") = Wreg(ldregs, inst.is_clone());
   _(_(_(out, "contents"), "rwb"), "clonedest") =
-    _(_(_(in, "contents"), "rval"), "val0")[0][range<0, LL-1>()];
+    Wreg(ldregs, _(_(_(in, "contents"), "rval"), "val0")[0][range<0, LL-1>()]);
 
   tap("alu_full", full);
   tap("alu_out", out);

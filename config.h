@@ -15,9 +15,11 @@ const unsigned W(4),        // Total warps
 const unsigned WW(chdl::CLOG2(W)), RR(chdl::CLOG2(R)), LL(chdl::CLOG2(L)),
                NN(chdl::CLOG2(N));
 
-const bool FPGA(false),     // Produce Verilog netlist for FPGA
-           FPGA_IO(false),  // Console output from DummyCache
-           SOFT_IO(true),   // Software I/O. Console output to stdout
-           DEBUG_MEM(true); // Print all memory operations to stderr
+const bool FPGA(false),      // Produce Verilog netlist for FPGA
+           FPGA_IO(false),   // Console output from DummyCache
+           NETLIST(false),   // Produce a .netl file
+           SIMULATE(true),   // Run a simulation
+           SOFT_IO(true),    // Software I/O. Console output to stdout
+           DEBUG_MEM(false); // Print all memory operations to stderr
 
 #endif
