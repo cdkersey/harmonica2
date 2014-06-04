@@ -3,6 +3,7 @@
 - Write memory mapped IO module using address-based routing module
 - Add lane/warp control instructions
   - Add jalis/jalrs
+- Add a few more judicious assertions.
 
 Lane control:           (clonew)
 Kernel mode/exceptions: di  ei  skep  halt  trap  jmpru  reti
