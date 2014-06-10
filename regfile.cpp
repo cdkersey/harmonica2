@@ -67,8 +67,10 @@ void PredRegs(pred_reg_t &out, fetch_pred_t &in, splitter_pred_t &wb) {
   HIERARCHY_EXIT();
 }
 
-void GpRegs(reg_func_t &out, pred_reg_t &in, splitter_reg_t &wb) {
+void GpRegs(reg_func_t &out_buffered, pred_reg_t &in, splitter_reg_t &wb) {
   HIERARCHY_ENTER();
+  reg_func_t out;
+
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
 
   bvec<RR> wb_dest(_(_(wb, "contents"), "dest"));
@@ -133,6 +135,8 @@ void GpRegs(reg_func_t &out, pred_reg_t &in, splitter_reg_t &wb) {
   Flatten(_(_(_(out,"contents"),"rval"),"val0")) = Latch(!ready,Flatten(rval0));
   Flatten(_(_(_(out,"contents"),"rval"),"val1")) = Latch(!ready,Flatten(rval1));
   Flatten(_(_(_(out,"contents"),"rval"),"val2")) = Latch(!ready,Flatten(rval2));
+
+  Buffer<1>(out_buffered, out);
 
   HIERARCHY_EXIT();
 }
