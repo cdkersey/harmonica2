@@ -20,7 +20,7 @@ template <unsigned N>
   );
 
 void Funcunit_mult(func_splitter_t &out, reg_func_t &in);
-void Funcuint_div(func_splitter_t &out, reg_func_t &in);
+void Funcunit_div(func_splitter_t &out, reg_func_t &in);
 
 void Funcunit_mult(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_ENTER();
@@ -66,7 +66,7 @@ void Funcunit_mult(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_EXIT();
 }
 
-void Funcuint_div(func_splitter_t &out, reg_func_t &in) {
+void Funcunit_div(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_ENTER();
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
 

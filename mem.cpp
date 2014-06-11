@@ -69,6 +69,8 @@ void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
 }
 
 void DummyCache(cache_resp_t &out, cache_req_t &in) {
+  const unsigned DCS(CLOG2(DUMMYCACHE_SZ));
+
   node ready = _(out, "ready");
   _(in, "ready") = ready;
 
@@ -83,7 +85,9 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
   _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
 
   bvec<N> a(_(_(in, "contents"), "a"));
-  bvec<10> devAddr(a[range<CLOG2(LINE*(N/8)), CLOG2(LINE*(N/8))+9>()]);
+  bvec<CLOG2(DCS)> devAddr(
+    a[range<CLOG2(LINE*(N/8)), CLOG2(LINE*(N/8))+CLOG2(DCS)-1>()]
+  );
 
   vec<LINE, bvec<N> > memd(_(_(in, "contents"), "d"));
   vec<LINE, bvec<N> > memq;

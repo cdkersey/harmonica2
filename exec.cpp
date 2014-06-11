@@ -23,7 +23,7 @@ void RouteFunc(bvec<N_FU> &valid, const reg_func_int_t &in, node in_valid);
 void Funcunit_alu(func_splitter_t &out, reg_func_t &in);
 void Funcunit_plu(func_splitter_t &out, reg_func_t &in);
 void Funcunit_mult(func_splitter_t &out, reg_func_t &in);
-void Funcuint_div(func_splitter_t &out, reg_func_t &in);
+void Funcunit_div(func_splitter_t &out, reg_func_t &in);
 void Funcunit_lsu(func_splitter_t &out, reg_func_t &in);
 void Funcunit_branch(func_splitter_t &out, reg_func_t &in);
 
@@ -57,7 +57,7 @@ void Execute(splitter_sched_t &out, splitter_pred_t &pwb, splitter_reg_t &rwb,
   Funcunit_alu(fu_outputs[FU_ALU], fu_inputs[FU_ALU]);
   Funcunit_plu(fu_outputs[FU_PLU], fu_inputs[FU_PLU]);
   Funcunit_mult(fu_outputs[FU_MULT], fu_inputs[FU_MULT]);
-  Funcuint_div(fu_outputs[FU_DIV], fu_inputs[FU_DIV]);
+  Funcunit_div(fu_outputs[FU_DIV], fu_inputs[FU_DIV]);
   Funcunit_lsu(fu_outputs[FU_LSU], fu_inputs[FU_LSU]);
   Funcunit_branch(fu_outputs[FU_BRANCH], fu_inputs[FU_BRANCH]);
 
