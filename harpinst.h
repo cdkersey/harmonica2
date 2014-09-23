@@ -115,6 +115,8 @@ template <unsigned N, unsigned R, unsigned P> struct harpinst {
   node is_spawn() { return get_opcode() == Lit<6>(0x20)
                         || get_opcode() == Lit<6>(0x21); }
   node is_term() { return get_opcode() == Lit<6>(0x22); } // jmprt
+  node is_split() { return get_opcode() == Lit<6>(0x3a); } // split
+  node is_join() { return get_opcode() == Lit<6>(0x3b); } // join
 
   node is_prot() { return get_opcode() == Lit<6>(0x30)    // skep
                        || get_opcode() == Lit<6>(0x01)    // di 

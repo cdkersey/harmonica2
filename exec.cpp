@@ -146,7 +146,9 @@ void RouteFunc(bvec<N_FU> &valid, const reg_func_int_t &in, node in_valid) {
     (inst.get_opcode() == Lit<6>(0x1e)  || // jmpr
      inst.get_opcode() == Lit<6>(0x22)  || // jmprt
      inst.get_opcode() == Lit<6>(0x1d)  || // jmpi
-     inst.get_opcode() == Lit<6>(0x3a));   // wspawn
+     inst.get_opcode() == Lit<6>(0x3a)) || // wspawn
+     inst.get_opcode() == Lit<6>(0x3b)  || // split
+     inst.get_opcode() == Lit<6>(0x3c);    // join
 
   valid = v & bvec<N_FU>(in_valid);
   HIERARCHY_EXIT();

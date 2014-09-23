@@ -3,12 +3,13 @@
 
 #include <chdl/chdl.h>
 
-const unsigned W(8), // Total warps
+const unsigned W(16), // Total warps
                L(4), // Number of SIMD lanes
                N(32), // Number of bits in a machine word
                R(8), // Number of GPRs/predicate registers
                LINE(16), // Words per cache line
                ROMSZ(4096), // Instruction ROM size
+               IPDOM_STACK_SZ(2), // Hardware stack used for control flow.
                DUMMYCACHE_SZ(64); // Cache lines in main memory
 
 // Doubled constants mean log base 2 of the corresponding constant. LL bits can
@@ -16,7 +17,8 @@ const unsigned W(8), // Total warps
 const unsigned WW(chdl::CLOG2(W)), RR(chdl::CLOG2(R)), LL(chdl::CLOG2(L)),
                NN(chdl::CLOG2(N));
 
-const bool FPGA(false), // Produce Verilog netlist for FPGA
+const bool SRAM_REGS(false), // Use SRAM for register files
+           FPGA(false), // Produce Verilog netlist for FPGA
            FPGA_IO(false), // Console output from DummyCache
            NETLIST(false), // Produce a .netl file
            SIMULATE(true), // Run a simulation

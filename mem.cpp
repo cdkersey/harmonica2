@@ -105,12 +105,15 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
         [](bool x){if (x) cout << char(consoleOutVal);},
         wrConsole
       );
+
+      TAP(wrConsole);
+      tap("consoleVal", memd[i]);
     }
 
     if (i == 0 && FPGA && FPGA_IO) {    
-      node wrConsole(wr && a[N-1]);
+      node wrConsole(Reg(wr && a[N-1]));
       OUTPUT(wrConsole);
-      bvec<8> consoleOutVal(memd[i][range<0,7>()]);
+      bvec<8> consoleOutVal(Wreg(wr && a[N-1], memd[i][range<0,7>()]));
       OUTPUT(consoleOutVal);
     }
   }

@@ -1,8 +1,6 @@
 - Write a test that covers all instructions and produces predictable,
   automatically verifiable results.
 - Write memory mapped IO module using address-based routing module
-- Add lane/warp control instructions
-  - Add jalis/jalrs
 - Add a few more judicious assertions.
 
 Lane control:           (clonew)
