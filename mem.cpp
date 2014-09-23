@@ -233,12 +233,16 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
     bvec<L> maskBits;
     for (unsigned l = 0; l < L; ++l)
       maskBits[l] =
-        (aReg[l][range<NB, LB-1>()]==Lit<CLOG2(LINE)>(i)) &&
+        (aReg[l][range<NB, LB-1>()] == Lit<CLOG2(LINE)>(i)) &&
         (aReg[l][range<LB, N-1>()] == reqAddr[range<LB, N-1>()]) &&
-        allReqMask[l];
+        mask[l] && _(_(_(in, "contents"), "warp"), "active")[l];
     
     _(_(cache_req, "contents"), "mask")[i] = OrN(maskBits);
     _(_(cache_req, "contents"), "d")[i] = Mux(Log2(maskBits), dReg);
+
+    ostringstream oss;
+    oss << "maskBits" << i;
+    tap(oss.str(), maskBits);
   }
 
   TAP(cache_req);
