@@ -101,7 +101,28 @@ void GpRegs(reg_func_t &out_buffered, pred_reg_t &in, splitter_reg_t &wb) {
     for (unsigned i = 0; i < R; ++i) {
       node wr(wb_mask[l] && wb_dest == Lit<RR>(i) ||
                 wb_clonedest == Lit<LL>(l) && clone);
-      q[l][i] = Syncmem(a, Mux(clone, wb_val[l], clonebus[i]), wb_wid, wr);
+      if (SRAM_REGS) {
+        q[l][i] = Syncmem(a, Mux(clone, wb_val[l], clonebus[i]), wb_wid, wr);
+      } else {
+        vec<W, bvec<N> > regs;
+        for (unsigned w = 0; w < W; ++w) {
+          unsigned initialVal(0);
+          if (i == 0) initialVal = l;
+          if (i == 1) initialVal = w;
+
+          regs[w] = Wreg(
+            wr && wb_wid == Lit<WW>(w),
+            Mux(clone, wb_val[l], clonebus[i]),
+            initialVal
+          );
+
+          ostringstream rname;
+          rname << "reg_" << w << '_' << l << '_' << i;
+          tap(rname.str(), regs[w]);
+        }
+        q[l][i][0] = Reg(Mux(a[0], regs));
+        q[l][i][1] = Reg(Mux(a[1], regs));
+      }
     }
   }
 
