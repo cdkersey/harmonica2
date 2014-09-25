@@ -41,7 +41,6 @@ ploop: ld %r7, %r0, array                        /* 2c */
 
 dthread: ldi %r1, #10                            /* 48 */
          ldi %r2, #0                             /* 4c */
-	 addi %r0, %r0, #2
 
 loop:    andi %r3, %r0, #1                       /* 50 */
          rtop @p1, %r3                           /* 54 */
