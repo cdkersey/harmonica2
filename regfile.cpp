@@ -102,7 +102,7 @@ void GpRegs(reg_func_t &out_buffered, pred_reg_t &in, splitter_reg_t &wb) {
       node wr(wb_mask[l] && wb_dest == Lit<RR>(i) ||
                 wb_clonedest == Lit<LL>(l) && clone);
       if (SRAM_REGS) {
-        q[l][i] = Syncmem(a, Mux(clone, wb_val[l], clonebus[i]), wb_wid, wr);
+        q[l][i] = Syncmem(a, Mux(Reg(clone), Reg(wb_val[l]), clonebus[i]), Reg(wb_wid), Reg(wr));
       } else {
         vec<W, bvec<N> > regs;
         for (unsigned w = 0; w < W; ++w) {
@@ -111,8 +111,8 @@ void GpRegs(reg_func_t &out_buffered, pred_reg_t &in, splitter_reg_t &wb) {
           if (i == 1) initialVal = w;
 
           regs[w] = Wreg(
-            wr && wb_wid == Lit<WW>(w),
-            Mux(clone, wb_val[l], clonebus[i]),
+            Reg(wr && wb_wid == Lit<WW>(w)),
+            Mux(Reg(clone), Reg(wb_val[l]), clonebus[i]),
             initialVal
           );
 
@@ -130,7 +130,7 @@ void GpRegs(reg_func_t &out_buffered, pred_reg_t &in, splitter_reg_t &wb) {
     vec<L, bvec<N> > cb_slice;
     for (unsigned l = 0; l < L; ++l)
       cb_slice[l] = q[l][i][1];
-    clonebus[i] = Mux(wb_clonesrc, cb_slice);
+    clonebus[i] = Mux(Reg(wb_clonesrc), cb_slice);
   }
 
 
