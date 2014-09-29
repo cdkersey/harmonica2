@@ -35,8 +35,28 @@ void PredRegs(pred_reg_t &out, fetch_pred_t &in, splitter_pred_t &wb) {
 
   vec<L, vec<3, bvec<1> > > q;
 
-  for (unsigned i = 0; i < L; ++i)
-    q[i] = Syncmem(rd_addr, bvec<1>(wb_val[i]), a_wb, wb_mask[i]);
+  if (SRAM_REGS) {
+    for (unsigned i = 0; i < L; ++i)
+      q[i] = Syncmem(rd_addr, bvec<1>(wb_val[i]), a_wb, wb_mask[i]);
+  } else {
+    vec<L, bvec<W*R> > pregs;
+
+    for (unsigned l = 0; l < L; ++l) {
+      for (unsigned w = 0; w < W; ++w) {
+        for (unsigned r = 0; r < R; ++r) {
+          node wr(wb_mask[l] && a_wb == Lit<WW + RR>(w*R + r));
+          pregs[l][w*R + r] = Wreg(wr, wb_val[l]);
+          ostringstream oss;
+          oss << "preg" << '_' << w << '_' << l << '_' << r;
+          tap(oss.str(), pregs[l][w*R + r]);
+        }
+      }
+
+      q[l][0] = Reg(Mux(rd_addr[0], pregs[l]));
+      q[l][1] = Reg(Mux(rd_addr[1], pregs[l]));
+      q[l][2] = Reg(Mux(rd_addr[2], pregs[l]));
+    }
+  }
  
   bvec<L> pval0, pval1, pmask;
 
@@ -94,7 +114,7 @@ void GpRegs(reg_func_t &out_buffered, pred_reg_t &in, splitter_reg_t &wb) {
   vec<L, vec<R, vec<2, bvec<N> > > > q;
 
   vec<2, bvec<WW> > a;
-  a[0] = Mux(clone, wid, wb_wid);
+  a[0] = wid;
   a[1] = wb_wid;
 
   for (unsigned l = 0; l < L; ++l) {

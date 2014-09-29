@@ -84,8 +84,8 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
     push, pop, otherbranch, fallthrough, wid
   ));
 
-  push = inst.get_opcode() == Lit<6>(0x3b) && _(in, "valid"); // split
-  pop = inst.get_opcode() == Lit<6>(0x3c) && _(in, "valid"); // join
+  push = inst.get_opcode() == Lit<6>(0x3b) && _(in, "ready") && _(in, "valid"); // split
+  pop = inst.get_opcode() == Lit<6>(0x3c) && _(in, "ready") && _(in, "valid"); // join
 
   Cassign(outMask).
     IF(taken).
