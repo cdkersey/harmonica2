@@ -17,7 +17,7 @@ typedef ag<STP("fallthrough"), node,
         ag<STP("pc"), bvec<N> > > > ipdom_stack_entry_t;
 
 template <unsigned N, typename T> T IpdomStack(
-  node &full, node &empty, node push, node pop, const T& tval, const T& bval
+  node push, node pop, const T& tval, const T& bval, const bvec<WW> &wid
 );
 
 // Execute branch instructions
@@ -38,6 +38,7 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
   node ldregs(_(in, "valid") && _(in, "ready"));
 
   bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
+  bvec<WW> wid(_(_(_(in, "contents"), "warp"), "id"));
 
   _(out, "valid") = full;
   _(_(_(out, "contents"), "warp"), "state") =
@@ -70,7 +71,7 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
   _(_(_(out, "contents"), "rwb"), "val") = Wreg(ldregs, pc);
 
   // Handle split and join instructions
-  node stack_full, stack_empty, push, pop;
+  node push, pop;
   ipdom_stack_entry_t otherbranch, fallthrough;
   _(otherbranch, "fallthrough") = Lit(0);
   _(fallthrough, "fallthrough") = Lit(1);
@@ -80,7 +81,7 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
   _(fallthrough, "pc") = Lit<N>(0);
 
   ipdom_stack_entry_t top(IpdomStack<IPDOM_STACK_SZ>(
-    stack_full, stack_empty, push, pop, otherbranch, fallthrough
+    push, pop, otherbranch, fallthrough, wid
   ));
 
   push = inst.get_opcode() == Lit<6>(0x3b) && _(in, "valid"); // split
@@ -127,32 +128,42 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
 // We implement it here with registers.
 // It does not have to handle simultaneous pushes and pops.
 template <unsigned N, typename T> T IpdomStack(
-  node &full, node &empty, node push, node pop, const T& tval, const T& bval
+  node push, node pop, const T& tval, const T& bval, const bvec<WW> &wid
 )
 {
-  bvec<N+1> next_count, count(Reg(next_count));
-  Cassign(next_count).
-    IF(push, count + Lit<N+1>(2)).
-    IF(pop, count - Lit<N+1>(1)).
-    ELSE(count);  
+  vec<W, bvec<N+1> > next_count, count;
+  for (unsigned w = 0; w < W; ++w) {
+    node wsel(wid == Lit<WW>(w));
+    Cassign(next_count[w]).
+      IF(push && wsel, count[w] + Lit<N+1>(2)).
+      IF(pop && wsel, count[w] - Lit<N+1>(1)).
+      ELSE(count[w]);
+    count[w] = Reg(next_count[w]);
+  }
 
-  full = (count == Cat(Lit(1), Lit<N>(0)));
-  empty = (count == Lit<N+1>(0));
+  vec<W, T> top;
+  vec<W, vec<(1<<N), T> > store;
+  for (unsigned w = 0; w < W; ++w) {
+    node wsel(wid == Lit<WW>(w));
 
-  vec<(1<<N), T> store;
-  T top(Mux(Zext<N>(count - Lit<N+1>(1)), store));
-  for (unsigned i = 0; i < (1<<N); ++i) {
-    T next;
-    Cassign(next).
-      IF(push && count == Lit<N+1>(i - 1), tval).
-      IF(push && count == Lit<N+1>(i), bval).
-      ELSE(store[i]);
-    store[i] = Reg(next);
+    for (unsigned i = 0; i < (1<<N); ++i) {
+      T next;
+      Cassign(next).
+        IF(wsel && push && count[w] == Lit<N+1>(i - 1), tval).
+        IF(wsel && push && count[w] == Lit<N+1>(i), bval).
+        ELSE(store[w][i]);
+      store[w][i] = Reg(next);
+    }
+
+    top[w] = Mux(Zext<N>(count[w] - Lit<N+1>(1)), store[w]);
   }
 
   tap("ipdom_stack_count", count);
   tap("ipdom_stack_store", store);
   tap("ipdom_stack_top", top);
 
-  return top;
+  T out(Mux(wid, top));
+
+  tap("ipdom_stack_out", out);
+  return out;
 }
