@@ -173,9 +173,12 @@ void GpRegs(reg_func_t &out_buffered, pred_reg_t &in, splitter_reg_t &wb) {
   _(_(out, "contents"), "warp") = Wreg(ready, _(_(in, "contents"), "warp"));
   _(_(out, "contents"), "ir") = Wreg(ready, _(_(in, "contents"), "ir"));
   _(_(out, "contents"), "pval") = Wreg(ready, _(_(in, "contents"), "pval"));
-  Flatten(_(_(_(out,"contents"),"rval"),"val0")) = Latch(!ready,Flatten(rval0));
-  Flatten(_(_(_(out,"contents"),"rval"),"val1")) = Latch(!ready,Flatten(rval1));
-  Flatten(_(_(_(out,"contents"),"rval"),"val2")) = Latch(!ready,Flatten(rval2));
+  Flatten(_(_(_(out,"contents"),"rval"),"val0")) =
+    Latch(Reg(!ready),Flatten(rval0));
+  Flatten(_(_(_(out,"contents"),"rval"),"val1")) =
+    Latch(Reg(!ready),Flatten(rval1));
+  Flatten(_(_(_(out,"contents"),"rval"),"val2")) =
+    Latch(Reg(!ready),Flatten(rval2));
 
   Buffer<1>(out_buffered, out);
 
