@@ -6,13 +6,13 @@
 .global
 entry:    ldi %r0, warpmain
           ldi %r1, #1234
-          wspawn %r1, %r0
+          wspawn %r0, %r0, %r1
 
           ldi %r1, #2345
-          wspawn %r1, %r0
+          wspawn %r0, %r0, %r1
 
           ldi %r1, #3456
-          wspawn %r1, %r0
+          wspawn %r0, %r0, %r1
 
 finished: jmpi  finished
 

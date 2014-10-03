@@ -63,12 +63,25 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
 
   _(_(_(out, "contents"), "warp"), "active") = Wreg(ldregs, outMask);
 
+  // Handle the wspawn instruction
+  _(_(out, "contents"), "spawn") =
+    Wreg(ldregs, inst.get_opcode() == Lit<6>(0x3a));
+  _(_(out, "contents"), "spawn_pc") =
+    Wreg(ldregs, _(_(_(in, "contents"), "rval"), "val0")[0]);
+
+
+  // Writeback
   _(_(_(out, "contents"), "rwb"), "mask") =
     Wreg(ldregs, pmask & active & bvec<L>(inst.has_rdst()));
   _(_(_(out, "contents"), "rwb"), "wid") =
-    Wreg(ldregs, _(_(_(in, "contents"), "warp"), "id"));
+    Mux(_(_(out, "contents"), "spawn"),
+          Wreg(ldregs, _(_(_(in, "contents"), "warp"), "id")),
+          Wreg(ldregs, _(_(_(in, "contents"), "warp"), "next_id")));
   _(_(_(out, "contents"), "rwb"), "dest") = Wreg(ldregs, inst.get_rdst());
-  _(_(_(out, "contents"), "rwb"), "val") = Wreg(ldregs, pc);
+  _(_(_(out, "contents"), "rwb"), "val") =
+    Mux(_(_(out, "contents"), "spawn"),
+      Wreg(ldregs, pc),
+      Wreg(ldregs, _(_(_(in, "contents"), "rval"), "val1")[0]));
 
   // Handle split and join instructions
   node push, pop;
@@ -112,11 +125,6 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
     ELSE(pc).END().ELSE(pc);
 
   _(_(_(out, "contents"), "warp"), "pc") = Wreg(ldregs, out_pc);
-
-  // Handle the wspawn instruction
-  _(_(out, "contents"), "spawn") =
-    Wreg(ldregs, inst.get_opcode() == Lit<6>(0x3a));
-  _(_(out, "contents"), "spawn_pc") = Wreg(ldregs, rval0);
 
   tap("branch_full", full);
   tap("branch_out", out);

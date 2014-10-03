@@ -63,6 +63,7 @@ void Sched(sched_fetch_t &out, splitter_sched_t &in) {
   _(buf_in, "contents") = Mux(spawnState,
                             bvec<WARPSZ>(_(_(arb_out, "contents"), "warp")),
                             bvec<WARPSZ>(spawnWarp));
+  _(_(buf_in, "contents"), "next_id") = _(spawnWarp, "id") + Lit<WW>(1);
 
   Buffer<WW>(out, buf_in);
   TAP(buf_in); TAP(in);

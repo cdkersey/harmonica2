@@ -43,6 +43,8 @@ void Execute(splitter_sched_t &out, splitter_pred_t &pwb, splitter_reg_t &rwb,
     = _(_(_(in, "contents"), "warp"), "active");
   _(_(_(fu_router_in, "contents"), "warp"), "id")
     = _(_(_(in, "contents"), "warp"), "id");
+  _(_(_(fu_router_in, "contents"), "warp"), "next_id")
+    = _(_(_(in, "contents"), "warp"), "next_id");
   _(_(_(fu_router_in, "contents"), "warp"), "pc")
     = _(_(_(in, "contents"), "warp"), "pc") + Lit<N>(N/8);
   _(_(fu_router_in, "contents"), "ir") = _(_(in, "contents"), "ir");

@@ -150,7 +150,7 @@ template <unsigned N, unsigned R, unsigned P> struct harpinst {
                || op == Lit<6>(0x0d) || op == Lit<6>(0x0e)
                || op == Lit<6>(0x0f) || op == Lit<6>(0x10)
                || op == Lit<6>(0x35) || op == Lit<6>(0x36)
-               || op == Lit<6>(0x37);
+               || op == Lit<6>(0x37) || op == Lit<6>(0x3a);
     ac[AC_3REGSRC] = Lit(0);
     ac[AC_1IMM] = op == Lit<6>(0x1d);
     ac[AC_2IMM] = op == Lit<6>(0x1b) || op == Lit<6>(0x25);

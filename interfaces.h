@@ -18,7 +18,8 @@ namespace chdl {
   typedef ag<STP("state"), bvec<SS>,
           ag<STP("pc"), bvec<N>,
           ag<STP("active"), bvec<L>, 
-          ag<STP("id"), bvec<WW> > > > > warp_t;
+          ag<STP("id"), bvec<WW>,
+          ag<STP("next_id"), bvec<WW> > > > > > warp_t;
 
   // Predicate read values
   typedef ag<STP("pmask"), bvec<L>,
