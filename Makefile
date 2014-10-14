@@ -4,7 +4,8 @@ ARCH = 4w8/8/1
 
 all : sieve.vcd
 
-h2: regfile.o h2.o alu.o exec.o sched.o fetch.o mem.o muldiv.o branch.o
+h2: regfile.o h2.o alu.o exec.o sched.o fetch.o mem.o muldiv.o branch.o \
+    barrier.o
 	$(CXX) $(LDFLAGS) -o h2 $^ $(LDLIBS)
 
 h2.o: h2.cpp config.h interfaces.h
@@ -16,6 +17,7 @@ fetch.o: fetch.cpp config.h interfaces.h
 mem.o: mem.cpp config.h interfaces.h
 muldiv.o: muldiv.cpp config.h interfaces.h
 branch.o: branch.cpp config.h interfaces.h
+barrier.o: barrier.cpp config.h interfaces.h
 
 %.hex : %.bin
 	hexdump -v -e '1/4 "%08x" "\n"' $< > $@

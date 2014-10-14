@@ -12,6 +12,7 @@ using namespace chdl;
 
 void Funcunit_branch(func_splitter_t &out, reg_func_t &in);
 
+// Types and functions for IPDOM implementation
 typedef ag<STP("fallthrough"), node,
         ag<STP("mask"), bvec<L>,
         ag<STP("pc"), bvec<N> > > > ipdom_stack_entry_t;

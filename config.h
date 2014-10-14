@@ -10,6 +10,7 @@ const unsigned W(16), // Total warps
                LINE(16), // Words per cache line
                ROMSZ(4096), // Instruction ROM size
                IPDOM_STACK_SZ(2), // Hardware stack used for control flow.
+               BARRIERS(4), // Supported number of simultaneous barriers
                DUMMYCACHE_SZ(64); // Cache lines in main memory
 
 // Doubled constants mean log base 2 of the corresponding constant. LL bits can
