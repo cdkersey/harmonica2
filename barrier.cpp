@@ -76,12 +76,14 @@ void Funcunit_bar(func_splitter_t &out, reg_func_t &in) {
 
   // Valid bit is cleared for clear, set for write.
   _(d, "valid") = state_1h[ST_WRITE];
-  Cassign(_(d, "arrived")).
-    IF(_(q, "valid"), _(q, "arrived") + Lit<WW>(1)).
-    ELSE(Lit<WW>(1));
+  bvec<WW> idx;
+  Cassign(idx).
+    IF(_(q, "valid"), _(q, "arrived")).
+    ELSE(Lit<WW>(0));
+  _(d, "arrived") = idx + Lit<WW>(1);
 
   barrier_warp_t w;
-  Replace(_(d, "warps"), _(q, "warps"), _(d, "arrived"), w, state_1h[ST_CLEAR]);
+  Replace(_(d, "warps"), _(q, "warps"), idx, w, state_1h[ST_CLEAR]);
   _(w, "pc") = Latch(arrive, _(_(_(in, "contents"), "warp"), "pc"));
   _(w, "id") = Latch(arrive, _(_(_(in, "contents"), "warp"), "id"));
   _(w, "active") = Latch(arrive, _(_(_(in, "contents"), "warp"), "active"));
