@@ -1,38 +1,24 @@
 #ifndef HARMONICA_HARPINST_H
 #define HARMONICA_HARPINST_H
 
-using namespace chdl; // TODO: this is downright naughty
-
-enum argclass {
-  AC_NONE, AC_1REG, AC_2REG, AC_3REG, AC_3REGSRC, AC_1IMM, AC_2IMM, AC_3IMM,
-  AC_3IMMSRC, AC_PREG_REG, AC_2PREG, AC_3PREG
-};
-
-enum argclass_bit {
-  ACBIT_NONE     = 0x001,
-  ACBIT_1REG     = 0x002,
-  ACBIT_2REG     = 0x004,
-  ACBIT_3REG     = 0x008,
-  ACBIT_3REGSRC  = 0x010,
-  ACBIT_1IMM     = 0x020,
-  ACBIT_2IMM     = 0x040,
-  ACBIT_3IMM     = 0x080,
-  ACBIT_3IMMSRC  = 0x100,
-  ACBIT_PREG_REG = 0x200,
-  ACBIT_2PREG    = 0x400,
-  ACBIT_3PREG    = 0x800
-};
 
 // This structure defines an instruction type and provides a way to decode it.
 // Issues:
 //   Assumes, when reading predicate register fields, that R == P.
+namespace chdl { // TODO: this is naughty (less so than a using directive)
+
+enum argclass {
+  AC_NONE, AC_1REG, AC_2REG, AC_3REG, AC_3REGSRC, AC_1IMM, AC_2IMM, AC_3IMM,
+  AC_3IMMSRC, AC_PREG_REG, AC_2PREG, AC_3PREG, AC_2REGSRC, N_AC
+};
+
 template <unsigned N, unsigned R, unsigned P> struct harpinst {
   harpinst(bvec<N> inst): inst(inst), argclass(argclass_hw()) {}
 
   node    has_pred()  { return inst[N-1]; }
   bvec<P> get_pred()  { return inst[range<N-1-P, N-2>()]; }
   bvec<6> get_opcode(){ return inst[range<N-1-P-6, N-2-P>()]; }
-  bvec<4> get_argclass() { return Enc(argclass); }
+  bvec<CLOG2(N_AC)> get_argclass() { return Enc(argclass); }
 
   node    has_pdst()  {
     return argclass[AC_PREG_REG] || argclass[AC_2PREG] || argclass[AC_3PREG];
@@ -59,19 +45,21 @@ template <unsigned N, unsigned R, unsigned P> struct harpinst {
     return argclass[AC_1REG] || argclass[AC_2REG]
         || argclass[AC_3REG] || argclass[AC_3REGSRC]
         || argclass[AC_3IMM] || argclass[AC_3IMMSRC]
-        || argclass[AC_PREG_REG];
+        || argclass[AC_PREG_REG] || argclass[AC_2REGSRC];
   }
   bvec<R> get_rsrc0() {
-    return Mux(argclass[AC_1REG] ||
+    return Mux(argclass[AC_1REG] || argclass[AC_2REGSRC] ||
                argclass[AC_3REGSRC] || argclass[AC_3IMMSRC],
                  inst[range<N-1-P-6-2*R, N-1-P-R-7>()], 
                  inst[range<N-1-P-6-R, N-1-P-7>()]);
   }
 
   node    has_rsrc1() {
-    return argclass[AC_3REG] || argclass[AC_3REGSRC] || argclass[AC_3IMMSRC];
+    return argclass[AC_3REG] || argclass[AC_3REGSRC] || argclass[AC_3IMMSRC] ||
+           argclass[AC_2REGSRC];
   }
-  bvec<R> get_rsrc1() { return Mux(argclass[AC_3REGSRC] || argclass[AC_3IMMSRC],
+  bvec<R> get_rsrc1() { return Mux(argclass[AC_3REGSRC] ||
+                                   argclass[AC_3IMMSRC] || argclass[AC_2REGSRC],
                                      inst[range<N-1-P-6-3*R, N-1-P-2*R-7>()],
                                      inst[range<N-1-P-6-2*R, N-1-P-R-7>()]);
   }
@@ -132,10 +120,10 @@ template <unsigned N, unsigned R, unsigned P> struct harpinst {
                        || get_opcode() == Lit<6>(0x24); }
 
   // Returns a bit vector representing the argument class of this instruction.
-  bvec<12> argclass_hw() {
+  bvec<N_AC> argclass_hw() {
     HIERARCHY_ENTER();
     bvec<6> op(get_opcode());
-    bvec<12> ac;
+    bvec<N_AC> ac;
 
     ac[AC_NONE] = op == Lit<6>(0x2d);
     ac[AC_1REG] = op == Lit<6>(0x1e) || op == Lit<6>(0x1f)
@@ -166,6 +154,7 @@ template <unsigned N, unsigned R, unsigned P> struct harpinst {
     ac[AC_2PREG] = op == Lit<6>(0x2a);
     ac[AC_3PREG] = op == Lit<6>(0x27) || op == Lit<6>(0x28)
                 || op == Lit<6>(0x29);
+    ac[AC_2REGSRC] = op == Lit<6>(0x3d);
 
     HIERARCHY_EXIT();
 
@@ -173,7 +162,7 @@ template <unsigned N, unsigned R, unsigned P> struct harpinst {
   }
 
   bvec<N> inst;
-  bvec<12> argclass;
+  bvec<N_AC> argclass;
 };
-
+}
 #endif

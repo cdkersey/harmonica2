@@ -53,7 +53,10 @@ ploop: ld %r7, %r0, array
        trap;  */
 
 
-dthread: ldi %r1, #10
+dthread: ldi %r1, #1234
+	 ldi %r2, WARPS
+	 bar %r1, %r2
+	 ldi %r1, #10
          ldi %r2, #0
          muli %r7, %r7, #0x100
 	 add %r0, %r0, %r7

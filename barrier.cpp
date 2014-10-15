@@ -42,17 +42,17 @@ void Funcunit_bar(func_splitter_t &out, reg_func_t &in) {
   bvec<L> active(_(_(_(in, "contents"), "warp"), "active")),
           pmask(_(_(_(in, "contents"), "pval"), "pmask"));
 
-  vec<L, bvec<N> > n_v(_(_(_(in,"contents"),"rval"),"val0")),
-                   id_v(_(_(_(in,"contents"),"rval"),"val1"));
+  vec<L, bvec<N> > n_v(_(_(_(in,"contents"),"rval"),"val1")),
+                   id_v(_(_(_(in,"contents"),"rval"),"val0"));
 
   bvec<LL> lane_sel(Lsb(active & pmask));
   node arrive(_(in, "valid") && OrN(active & pmask));
 
   bvec<CLOG2(BARRIERS)> id(Latch(
-    arrive, Zext<CLOG2(BARRIERS)>(Mux(lane_sel, id_v))
+    !arrive, Zext<CLOG2(BARRIERS)>(Mux(lane_sel, id_v))
   ));
   bvec<CLOG2(W + 1)> n(Latch(
-    arrive, Zext<CLOG2(W+1)>(Mux(lane_sel, n_v))
+    !arrive, Zext<CLOG2(W+1)>(Mux(lane_sel, n_v))
   ));
 
   TAP(arrive);
@@ -61,18 +61,22 @@ void Funcunit_bar(func_splitter_t &out, reg_func_t &in) {
   TAP(n);
   TAP(state);
 
-  node wr(state_1h[ST_WRITE]), filled;
+  node wr(state_1h[ST_WRITE]), filled, all_released;
   barrier_t d, q(Syncmem(id, Flatten(d), wr));
 
   Cassign(next_state).
     IF(state_1h[ST_IDLE] && arrive, Lit<SS>(ST_WRITE)).
     IF(state_1h[ST_WRITE] && filled, Lit<SS>(ST_RELEASE)).
     IF(state_1h[ST_WRITE] && !filled, Lit<SS>(ST_IDLE)).
+    IF(state_1h[ST_RELEASE] && all_released, Lit<SS>(ST_CLEAR)).
+    IF(state_1h[ST_CLEAR], Lit<SS>(ST_IDLE)).
     ELSE(state);
   TAP(d); TAP(q);
 
   filled = (n == Lit<CLOG2(W + 1)>(1)) ||
            _(q, "arrived") == Zext<WW>(n - Lit<CLOG2(W + 1)>(1));
+
+  TAP(filled);
 
   // Valid bit is cleared for clear, set for write.
   _(d, "valid") = state_1h[ST_WRITE];
@@ -82,20 +86,38 @@ void Funcunit_bar(func_splitter_t &out, reg_func_t &in) {
     ELSE(Lit<WW>(0));
   _(d, "arrived") = idx + Lit<WW>(1);
 
+  // In release mode, maintain a counter that increments every time we send
+  // another warp back out into the pipeline to join its friends.
+  node release(state_1h[ST_RELEASE] && _(out, "ready")),
+       reset_release_ctr(!state_1h[ST_RELEASE]);
+  bvec<CLOG2(W + 1)> next_release_ctr, release_ctr(Reg(next_release_ctr));
+  Cassign(next_release_ctr).
+    IF(reset_release_ctr, Lit<CLOG2(W + 1)>(0)).
+    IF(release, release_ctr + Lit<CLOG2(W + 1)>(1)).
+    ELSE(release_ctr);
+  all_released = (next_release_ctr == n);
+
+  TAP(release);
+  TAP(release_ctr);
+  TAP(all_released);
+
   barrier_warp_t w;
   Replace(_(d, "warps"), _(q, "warps"), idx, w, state_1h[ST_CLEAR]);
-  _(w, "pc") = Latch(arrive, _(_(_(in, "contents"), "warp"), "pc"));
-  _(w, "id") = Latch(arrive, _(_(_(in, "contents"), "warp"), "id"));
-  _(w, "active") = Latch(arrive, _(_(_(in, "contents"), "warp"), "active"));
+  _(w, "pc") = Latch(!arrive, _(_(_(in, "contents"), "warp"), "pc"));
+  _(w, "id") = Latch(!arrive, _(_(_(in, "contents"), "warp"), "id"));
+  _(w, "active") = Latch(!arrive, _(_(_(in, "contents"), "warp"), "active"));
   _(w, "valid") = state_1h[ST_WRITE];
-
-  // _(_(_(out, "contents"), "warp"), "id") = ;
 
   // Never writes anything back.
   _(_(_(out, "contents"), "rwb"), "mask") = Lit<L>(0);
 
   _(in, "ready") = state_1h[ST_IDLE];
-  _(out, "valid") = state_1h[ST_RELEASE] || state_1h[ST_CLEAR];
+  _(out, "valid") = state_1h[ST_RELEASE];
+
+  barrier_warp_t rw(Mux(Zext<WW>(release_ctr), _(q, "warps")));  
+  _(_(_(out, "contents"), "warp"), "id") = _(rw, "id");
+  _(_(_(out, "contents"), "warp"), "active") = _(rw, "active");
+  _(_(_(out, "contents"), "warp"), "pc") = _(rw, "pc");
 
   HIERARCHY_EXIT();
 }
