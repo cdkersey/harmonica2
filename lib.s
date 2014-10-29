@@ -42,4 +42,4 @@ puts_l:      ld   %r6, %r7, #0;
              st %r6, %r4, #0;
              addi %r7, %r7, #1;
              jmpi puts_l;
-puts_end:    jmpr %r5
+puts_end:    jmpr %r5;
