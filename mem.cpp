@@ -169,7 +169,8 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
 
   vec<L, bvec<L> > eqmat; // Coalesce matrix: which addresses are equal?
   bvec<L> covered, // Is my request covered by that of a prior lane?
-          mask(_(_(in, "contents"), "mask"));
+          mask(_(_(in, "contents"), "mask")),
+          maskReg(Wreg(fill, mask));
   cache_req_t cache_req;
   cache_resp_t cache_resp;
 
@@ -235,7 +236,7 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
       maskBits[l] =
         (aReg[l][range<NB, LB-1>()] == Lit<CLOG2(LINE)>(i)) &&
         (aReg[l][range<LB, N-1>()] == reqAddr[range<LB, N-1>()]) &&
-        mask[l] && _(_(_(in, "contents"), "warp"), "active")[l];
+        maskReg[l] && _(_(_(in, "contents"), "warp"), "active")[l];
     
     _(_(cache_req, "contents"), "mask")[i] = OrN(maskBits);
     _(_(cache_req, "contents"), "d")[i] = Mux(Log2(maskBits), dReg);
@@ -244,6 +245,8 @@ void MemSystem(mem_resp_t &out, mem_req_t &in) {
     oss << "maskBits" << i;
     tap(oss.str(), maskBits);
   }
+
+  
 
   TAP(cache_req);
   TAP(cache_resp);
