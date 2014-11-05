@@ -13,19 +13,36 @@ using namespace chdl;
 
 void Funcunit_lsu(func_splitter_t &out, reg_func_t &in);
 
-void MemSystem(mem_resp_t &out, mem_req_t &in);
+void MemSystem(h2_mem_resp_t &out, h2_mem_req_t &in);
 
 // Load/store unit
 void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
 {
   HIERARCHY_ENTER();
 
-  mem_req_t req;
-  mem_resp_t resp;
+  h2_mem_req_t req;
+  h2_mem_resp_t resp;
 
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
 
   bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
+
+  // Warp table for memory requests
+  // TODO: replace warp in request types with ID
+  vec<W, warp_t> wtable;
+  node wtable_wr(_(in, "valid") && _(in, "ready"));
+  warp_t wtable_out, wtable_in(_(_(in, "contents"), "warp"));
+  bvec<WW> wtable_wid_out(_(_(_(resp, "contents"), "warp"), "id")),
+           wtable_wid_in(_(wtable_in, "id"));
+  for (unsigned w = 0; w < W; ++w)
+    wtable[w] = Wreg(wtable_wr && wtable_wid_in == Lit<WW>(w), wtable_in);
+  wtable_out = Mux(wtable_wid_out, wtable);
+  TAP(wtable_wr);
+  TAP(wtable);
+  TAP(wtable_in);
+  TAP(wtable_out);
+  TAP(wtable_wid_out);
+  TAP(wtable_wid_in);
 
   // Connect "in" to "req"
   _(in, "ready") = _(req, "ready");
@@ -157,7 +174,7 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
   _(_(out, "contents"), "lane") = Wreg(ldregs, _(_(in, "contents"), "lane"));  
 }
 
-void MemSystem(mem_resp_t &out, mem_req_t &in) {
+void MemSystem(h2_mem_resp_t &out, h2_mem_req_t &in) {
   HIERARCHY_ENTER();
   // TODO: Add an associative table to enable cache_resps to arrive out-of-order
   // e.g. from a non-blocking cache.

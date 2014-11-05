@@ -89,7 +89,7 @@ namespace chdl {
                ag<STP("wr"), node,
                ag<STP("mask"), bvec<L>,
                ag<STP("a"), vec<L, bvec<N> >,
-               ag<STP("d"), vec<L, bvec<N> > > > > > > > mem_req_t;    
+               ag<STP("d"), vec<L, bvec<N> > > > > > > > h2_mem_req_t;
 
   // Cache Request
   typedef ag<STP("warp"), warp_t,
@@ -103,7 +103,7 @@ namespace chdl {
 
   // Memory Response
   typedef flit<ag<STP("warp"), warp_t,
-               ag<STP("q"), vec<L, bvec<N> > > > > mem_resp_t;
+               ag<STP("q"), vec<L, bvec<N> > > > > h2_mem_resp_t;
 
   // Cache Response
   typedef flit<ag<STP("warp"), warp_t,
