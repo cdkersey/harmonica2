@@ -71,7 +71,7 @@ void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
   // Connect "out" to resp
   _(resp, "ready") = _(out, "ready");
   _(out, "valid") = _(resp, "valid");
-  _(_(out, "contents"), "warp") = _(_(resp, "contents"), "warp");
+  _(_(out, "contents"), "warp") = wtable_out;
   _(_(_(out,"contents"),"rwb"),"wid") = _(_(_(resp,"contents"),"warp"),"id");
   _(_(_(out,"contents"),"rwb"),"mask") = ldMask;
   _(_(_(out,"contents"),"rwb"),"dest") = ldDest;
