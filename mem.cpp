@@ -32,7 +32,7 @@ void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
   vec<W, warp_t> wtable;
   node wtable_wr(_(in, "valid") && _(in, "ready"));
   warp_t wtable_out, wtable_in(_(_(in, "contents"), "warp"));
-  bvec<WW> wtable_wid_out(_(_(_(resp, "contents"), "warp"), "id")),
+  bvec<WW> wtable_wid_out(_(_(resp, "contents"), "wid")),
            wtable_wid_in(_(wtable_in, "id"));
   for (unsigned w = 0; w < W; ++w)
     wtable[w] = Wreg(wtable_wr && wtable_wid_in == Lit<WW>(w), wtable_in);
@@ -47,7 +47,7 @@ void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
   // Connect "in" to "req"
   _(in, "ready") = _(req, "ready");
   _(req, "valid") = _(in, "valid");
-  _(_(req, "contents"), "warp") = _(_(in, "contents"), "warp");
+  _(_(req, "contents"), "wid") = _(_(_(in, "contents"), "warp"), "id");
   _(_(req, "contents"), "wr") = inst.is_store();
   _(_(req, "contents"), "mask") =
     _(_(_(in, "contents"), "pval"), "pmask") & active;
@@ -72,7 +72,7 @@ void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
   _(resp, "ready") = _(out, "ready");
   _(out, "valid") = _(resp, "valid");
   _(_(out, "contents"), "warp") = wtable_out;
-  _(_(_(out,"contents"),"rwb"),"wid") = _(_(_(resp,"contents"),"warp"),"id");
+  _(_(_(out,"contents"),"rwb"),"wid") = _(_(resp,"contents"),"wid");
   _(_(_(out,"contents"),"rwb"),"mask") = ldMask;
   _(_(_(out,"contents"),"rwb"),"dest") = ldDest;
   _(_(_(out,"contents"),"rwb"),"val") = _(_(resp,"contents"),"q");
@@ -99,7 +99,7 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
     ELSE(full);
 
   _(out, "valid") = full;
-  _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
+  _(_(out, "contents"), "wid") = Wreg(ldregs, _(_(in, "contents"), "wid"));
 
   bvec<N> a(_(_(in, "contents"), "a"));
   bvec<CLOG2(DCS)> devAddr(
@@ -146,7 +146,7 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
     }
 
     EgressInt(addrVal, Reg(a));
-    EgressInt(warpId, Reg(_(_(_(in, "contents"), "warp"), "id")));
+    EgressInt(warpId, Reg(_(_(in, "contents"), "wid")));
     EgressFunc([](bool x) {
       if (x) {
         cout << warpId << ": Mem " << (wrVal?"store":"load") << ':' << endl;
@@ -239,7 +239,7 @@ void MemSystem(h2_mem_resp_t &out, h2_mem_req_t &in) {
 
   _(_(cache_req, "contents"), "a") = reqAddr;
   _(_(cache_req, "contents"), "lane") = sel;
-  _(_(cache_req, "contents"), "warp") = Wreg(fill, _(_(in, "contents"),"warp"));
+  _(_(cache_req, "contents"), "wid") = Wreg(fill, _(_(in, "contents"),"wid"));
   _(_(cache_req, "contents"), "wr") = Wreg(fill, _(_(in, "contents"), "wr"));
 
   tap("mem_aReg", aReg);  tap("mem_dReg", dReg); tap("mem_qReg", qReg);
@@ -253,7 +253,7 @@ void MemSystem(h2_mem_resp_t &out, h2_mem_req_t &in) {
       maskBits[l] =
         (aReg[l][range<NB, LB-1>()] == Lit<CLOG2(LINE)>(i)) &&
         (aReg[l][range<LB, N-1>()] == reqAddr[range<LB, N-1>()]) &&
-        maskReg[l] && _(_(_(in, "contents"), "warp"), "active")[l];
+        maskReg[l] && _(_(in, "contents"), "mask")[l];
     
     _(_(cache_req, "contents"), "mask")[i] = OrN(maskBits);
     _(_(cache_req, "contents"), "d")[i] = Mux(Log2(maskBits), dReg);
@@ -287,7 +287,7 @@ void MemSystem(h2_mem_resp_t &out, h2_mem_req_t &in) {
 
   _(out, "valid") = full && (returnedReqMask == allReqMask);
 
-  _(_(out, "contents"), "warp") = Wreg(fill, _(_(in, "contents"), "warp"));
+  _(_(out, "contents"), "wid") = Wreg(fill, _(_(in, "contents"), "wid"));
   _(_(out, "contents"), "q") = qReg;
 
   empty = _(out, "valid") && _(out, "ready");

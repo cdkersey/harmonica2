@@ -85,14 +85,14 @@ namespace chdl {
                ag<STP("spawn_pc"), bvec<N> > > > > splitter_sched_t;
 
   // Memory Request
-  typedef flit<ag<STP("warp"), warp_t,
+  typedef flit<ag<STP("wid"), bvec<WW>,
                ag<STP("wr"), node,
                ag<STP("mask"), bvec<L>,
                ag<STP("a"), vec<L, bvec<N> >,
                ag<STP("d"), vec<L, bvec<N> > > > > > > > h2_mem_req_t;
 
   // Cache Request
-  typedef ag<STP("warp"), warp_t,
+  typedef ag<STP("wid"), bvec<WW>,
           ag<STP("lane"), bvec<LL>,
           ag<STP("wr"), node,
           ag<STP("mask"), bvec<LINE>,
@@ -102,11 +102,11 @@ namespace chdl {
   typedef flit<cache_req_int_t> cache_req_t;
 
   // Memory Response
-  typedef flit<ag<STP("warp"), warp_t,
+  typedef flit<ag<STP("wid"), bvec<WW>,
                ag<STP("q"), vec<L, bvec<N> > > > > h2_mem_resp_t;
 
   // Cache Response
-  typedef flit<ag<STP("warp"), warp_t,
+  typedef flit<ag<STP("wid"), bvec<WW>,
                ag<STP("lane"), bvec<LL>,
                ag<STP("q"), vec<LINE, bvec<N> > > > > > cache_resp_t;
 }
