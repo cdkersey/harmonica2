@@ -3,6 +3,7 @@
 #include <chdl/chdl.h>
 #include <chdl/cassign.h>
 #include <chdl/egress.h>
+#include <chdl/memreq.h>
 
 #include "config.h"
 #include "interfaces.h"
@@ -86,6 +87,37 @@ void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
 }
 
 void DummyCache(cache_resp_t &out, cache_req_t &in) {
+  // Try to convert cache_req_t to chdl::mem_req
+  mem_req<N, LINE, N, WW + LL> in_mr;
+  _(in_mr, "valid") = _(in, "valid");
+  _(_(in_mr, "contents"), "wr") = _(_(in, "contents"), "wr");
+  _(_(in_mr, "contents"), "addr") = _(_(in, "contents"), "a");
+  _(_(in_mr, "contents"), "data") = _(_(in, "contents"), "d");
+  _(_(in_mr, "contents"), "mask") = _(_(in, "contents"), "mask");
+  _(_(in_mr, "contents"), "id") =
+    Cat(_(_(in, "contents"), "wid"), _(_(in, "contents"), "lane"));
+  _(_(in_mr, "contents"), "llsc") = Lit(0);
+
+  TAP(in_mr);
+
+  mem_resp<N, LINE, WW + LL> out_mr;
+
+  TAP(out_mr);
+
+  Scratchpad<10 - CLOG2(LINE)>(out_mr, in_mr);
+
+  
+  #if 1
+  _(in, "ready") = _(in_mr, "ready");
+
+  _(out_mr, "ready") = _(out, "ready");
+  _(out, "valid") = _(out_mr, "valid");
+  _(_(out, "contents"), "q") = _(_(out_mr, "contents"), "data");
+  _(_(out, "contents"), "lane") =
+    _(_(out_mr, "contents"), "id")[range<0,LL-1>()];
+  _(_(out, "contents"), "wid") =
+    _(_(out_mr, "contents"), "id")[range<LL,LL+WW-1>()];
+  #else
   const unsigned DCS(CLOG2(DUMMYCACHE_SZ));
 
   node ready = _(out, "ready");
@@ -171,7 +203,8 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
   Flatten(_(_(out, "contents"), "q")) =
     Mux(ready && Reg(ready), Flatten(held_memq), Flatten(memq));
 
-  _(_(out, "contents"), "lane") = Wreg(ldregs, _(_(in, "contents"), "lane"));  
+  _(_(out, "contents"), "lane") = Wreg(ldregs, _(_(in, "contents"), "lane"));
+  #endif
 }
 
 void MemSystem(h2_mem_resp_t &out, h2_mem_req_t &in) {
