@@ -13,7 +13,7 @@ using namespace chdl;
 void Execute(splitter_sched_t&, splitter_pred_t&, splitter_reg_t&, reg_func_t&);
 
 enum funcunit_type_t {
-  FU_ALU, FU_PLU, FU_MULT, FU_DIV, FU_LSU, FU_BRANCH, FU_BAR, FU_PAD1, N_FU
+  FU_ALU, FU_PLU, FU_MULT, FU_DIV, FU_LSU, FU_BRANCH, FU_BAR, FU_FPU, N_FU
 };
 
 // Functional Unit Routing Function
@@ -27,6 +27,7 @@ void Funcunit_div(func_splitter_t &out, reg_func_t &in);
 void Funcunit_lsu(func_splitter_t &out, reg_func_t &in);
 void Funcunit_branch(func_splitter_t &out, reg_func_t &in);
 void Funcunit_bar(func_splitter_t &out, reg_func_t &in);
+void Funcunit_fpu(func_splitter_t &out, reg_func_t &in);
 
 // The execute pipeline stage
 void Execute(splitter_sched_t &out, splitter_pred_t &pwb, splitter_reg_t &rwb,
@@ -64,6 +65,8 @@ void Execute(splitter_sched_t &out, splitter_pred_t &pwb, splitter_reg_t &rwb,
   Funcunit_lsu(fu_outputs[FU_LSU], fu_inputs[FU_LSU]);
   Funcunit_branch(fu_outputs[FU_BRANCH], fu_inputs[FU_BRANCH]);
   Funcunit_bar(fu_outputs[FU_BAR], fu_inputs[FU_BAR]);
+  if (FPU)
+    Funcunit_fpu(fu_outputs[FU_FPU], fu_inputs[FU_FPU]);
 
   func_splitter_t fu_arbiter_out;
   Arbiter(fu_arbiter_out, ArbRR<N_FU>, fu_outputs);
@@ -157,6 +160,13 @@ void RouteFunc(bvec<N_FU> &valid, const reg_func_int_t &in, node in_valid) {
   v[FU_BAR] =
     inst.get_opcode() == Lit<6>(0x3d); // bar
 
+  if (FPU) {
+    v[FU_FPU] =
+      inst.get_opcode() == Lit<6>(0x35) || // fadd
+      inst.get_opcode() == Lit<6>(0x36) || // fsub
+      inst.get_opcode() == Lit<6>(0x37);   // fmul
+  }
+  
   valid = v & bvec<N_FU>(in_valid);
   HIERARCHY_EXIT();
 }

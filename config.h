@@ -3,7 +3,7 @@
 
 #include <chdl/chdl.h>
 
-const unsigned W(16), // Total warps
+const unsigned W(4), // Total warps
                L(4), // Number of SIMD lanes
                N(32), // Number of bits in a machine word
                R(8), // Number of GPRs/predicate registers
@@ -24,6 +24,6 @@ const bool SRAM_REGS(false), // Use SRAM for register files
            NETLIST(false), // Produce a .netl file
            SIMULATE(true), // Run a simulation
            SOFT_IO(true),  // Software I/O. Console output to stdout
-           DEBUG_MEM(false); // Print all memory operations to stderr
-
+           DEBUG_MEM(false), // Print all memory operations to stderr
+           FPU(false);
 #endif
