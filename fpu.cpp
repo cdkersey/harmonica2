@@ -29,86 +29,56 @@ void Funcunit_fpu(func_splitter_t &out, reg_func_t &in) {
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
   vec<L, interface_t> adder, multiplier, itof, ftoi;
 
+  TAP(adder);
+  TAP(multiplier);
+  TAP(itof);
+  TAP(ftoi);
+  
+  node do_add(inst.get_opcode() == Lit<6>(0x35)),
+       do_sub(inst.get_opcode() == Lit<6>(0x36)),
+       do_mul(inst.get_opcode() == Lit<6>(0x37)),
+       do_itof(inst.get_opcode() == Lit<6>(0x33)),
+       do_ftoi(inst.get_opcode() == Lit<6>(0x34)),
+       out_valid(_(multiplier[0], "valid_out") ||
+		 _(adder[0], "valid_out") ||
+		 _(ftoi[0], "valid_out") ||
+		 _(itof[0], "valid_out")),
+       stall(out_valid && !_(out, "ready"));
+
   for (unsigned l = 0; l < L; ++l) {
     Load("fmul.nand")("io", multiplier[l]);
     Load("fadd.nand")("io", adder[l]);
     Load("itof.nand")("io", itof[l]);
     Load("ftoi.nand")("io", ftoi[l]);
+
+    _(multiplier[l], "valid_in") = _(in, "valid") && do_mul;
+    _(adder[l], "valid_in") = _(in, "valid") && (do_add || do_sub);
+    _(itof[l], "valid_in") = _(in, "valid") && do_itof;
+    _(ftoi[l], "valid_in") = _(in, "valid") && do_ftoi;
+
+    // The adder's b input sign bit has to be xored so we can support
+    // subtraction.
+    bvec<32> adder_in_b;
+    adder_in_b[range<0, 30>()] =
+      _(_(_(in, "contents"), "rval"), "val1")[l][range<0, 30>()];
+    adder_in_b[31] = Xor(_(_(_(in, "contents"),"rval"),"val1")[l][31], do_sub);
+
+    _(multiplier[l], "a") = _(_(_(in, "contents"), "rval"), "val0")[l];
+    _(multiplier[l], "b") = _(_(_(in, "contents"), "rval"), "val1")[l];
+    _(adder[l], "a") = _(_(_(in, "contents"), "rval"), "val0")[l];
+    _(adder[l], "b") = adder_in_b;
+    _(itof[l], "a") = _(_(_(in, "contents"), "rval"), "val0")[l];
+    _(ftoi[l], "a") = _(_(_(in, "contents"), "rval"), "val0")[l];
+    
+    _(multiplier[l], "stall")
+     = _(adder[l], "stall")
+     = _(itof[l], "stall")
+     = _(ftoi[l], "stall") = stall;
+
+    // TODO: route output.
   }
 
-  node do_add(inst.get_opcode() == Lit<6>(0x35)),
-       do_sub(inst.get_opcode() == Lit<6>(0x36)),
-       do_mul(inst.get_opcode() == Lit<6>(0x37)),
-       do_itof(inst.get_opcode() == Lit<6>(0x33)),
-       do_ftoi(inst.get_opcode() == Lit<6>(0x34));
   
-  #if 0
-  node ready(_(out, "ready")), next_full, full(Reg(next_full));
-  _(in, "ready") = !full || ready;
-
-  Cassign(next_full).
-    IF(full && _(out, "ready") && !_(in, "valid"), Lit(0)).
-    IF(!full && _(in, "valid"), Lit(1)).
-    ELSE(full);
-
-  bvec<L> active(_(_(_(in, "contents"), "warp"), "active"));
-
-  harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
-
-  bvec<L> pmask(_(_(_(in, "contents"), "pval"), "pmask"));
-
-
-  node ldregs(_(in, "valid") && _(in, "ready"));
-
-
-  _(out, "valid") = full;
-  _(_(out, "contents"), "warp") = Wreg(ldregs, _(_(in, "contents"), "warp"));
-
-  _(_(_(out, "contents"), "rwb"), "mask") =
-    Wreg(ldregs, bvec<L>(inst.has_rdst()) & pmask & active);
-  _(_(_(out, "contents"), "rwb"), "dest") = Wreg(ldregs, inst.get_rdst());
-  _(_(_(out, "contents"), "rwb"), "wid") =
-    Wreg(ldregs, _(_(_(in, "contents"), "warp"), "id"    ));
-
-  vec<L, bvec<N> > out_val;
-
-  for (unsigned l = 0; l < L; ++l) {
-    bvec<N> rval0(_(_(_(in, "contents"), "rval"), "val0")[l]), 
-            rval1(_(_(_(in, "contents"), "rval"), "val1")[l]);
-
-    Cassign(out_val[l]).
-      IF(inst.get_opcode() == Lit<6>(0x05), -rval0). // neg
-      IF(inst.get_opcode() == Lit<6>(0x06), ~rval0). // not
-      IF(inst.get_opcode() == Lit<6>(0x07), rval0 & rval1). // and
-      IF(inst.get_opcode() == Lit<6>(0x08), rval0 | rval1). // or
-      IF(inst.get_opcode() == Lit<6>(0x09), rval0 ^ rval1). // xor
-      IF(inst.get_opcode() == Lit<6>(0x0a), rval0 + rval1).  // add
-      IF(inst.get_opcode() == Lit<6>(0x0b), rval0 - rval1).  // sub
-      IF(inst.get_opcode() == Lit<6>(0x0f), rval0<<Zext<CLOG2(N)>(rval1)).// shl
-      IF(inst.get_opcode() == Lit<6>(0x10), rval0>>Zext<CLOG2(N)>(rval1)).// shr
-      IF(inst.get_opcode() == Lit<6>(0x11), rval0 & inst.get_imm()). // andi
-      IF(inst.get_opcode() == Lit<6>(0x12), rval0 | inst.get_imm()). // ori
-      IF(inst.get_opcode() == Lit<6>(0x13), rval0 ^ inst.get_imm()). // xori
-      IF(inst.get_opcode() == Lit<6>(0x14), rval0 + inst.get_imm()).  // addi
-      IF(inst.get_opcode() == Lit<6>(0x15), rval0 - inst.get_imm()).  // subi
-      IF(inst.get_opcode() == Lit<6>(0x19),
-         rval0 << Zext<CLOG2(N)>(inst.get_imm())). // shli
-      IF(inst.get_opcode() == Lit<6>(0x1a),
-         rval0 >> Zext<CLOG2(N)>(inst.get_imm())). // shri
-      IF(inst.get_opcode() == Lit<6>(0x25), inst.get_imm()). // ldi
-      ELSE(Lit<N>(0));
-
-    _(_(_(out, "contents"), "rwb"), "val")[l] = Wreg(ldregs, out_val[l]);
-  }
-
-  _(_(_(out, "contents"), "rwb"), "clone") = Wreg(ldregs, inst.is_clone());
-  _(_(_(out, "contents"), "rwb"), "clonedest") =
-    Wreg(ldregs, _(_(_(in, "contents"), "rval"), "val0")[0][range<0, LL-1>()]);
-
-  tap("alu_full", full);
-  tap("alu_out", out);
-  tap("alu_in", in);
   
-  #endif
   HIERARCHY_EXIT();
 }
