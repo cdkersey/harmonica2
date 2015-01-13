@@ -162,6 +162,8 @@ void RouteFunc(bvec<N_FU> &valid, const reg_func_int_t &in, node in_valid) {
 
   if (FPU) {
     v[FU_FPU] =
+      inst.get_opcode() == Lit<6>(0x33) || // itof
+      inst.get_opcode() == Lit<6>(0x34) || // ftoi
       inst.get_opcode() == Lit<6>(0x35) || // fadd
       inst.get_opcode() == Lit<6>(0x36) || // fsub
       inst.get_opcode() == Lit<6>(0x37);   // fmul

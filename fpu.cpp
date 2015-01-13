@@ -16,27 +16,31 @@ using namespace chdl;
 void Funcunit_fpu(func_splitter_t &out, reg_func_t &in);
 
 // Interface with the modules
-typedef ag<STP("stall"),     out<node>,
-        ag<STP("valid_in"),  out<node>,
-        ag<STP("valid_out"), in<node>,
-        ag<STP("a"),         out<fp32>,
-        ag<STP("b"),         out<fp32>,
-        ag<STP("c"),         in<fp32> > > > > > > interface_t;
+typedef ag<STP("stall"),     in<node>,
+        ag<STP("valid_in"),  in<node>,
+        ag<STP("valid_out"), out<node>,
+        ag<STP("a"),         in<bvec<32> >,
+        ag<STP("b"),         in<bvec<32> >,
+        ag<STP("c"),         out<bvec<32> > > > > > > > interface_t;
 
 // Functional Unit: Floating Point Add/Multiply
 void Funcunit_fpu(func_splitter_t &out, reg_func_t &in) {
   HIERARCHY_ENTER();
   harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
-  interface_t adder[L], multiplier[L];
+  vec<L, interface_t> adder, multiplier, itof, ftoi;
 
   for (unsigned l = 0; l < L; ++l) {
     Load("fmul.nand")("io", multiplier[l]);
     Load("fadd.nand")("io", adder[l]);
+    Load("itof.nand")("io", itof[l]);
+    Load("ftoi.nand")("io", ftoi[l]);
   }
 
-  node add(inst.get_opcode() == Lit<6>(0x35)),
-       sub(inst.get_opcode() == Lit<6>(0x36)),
-       mul(inst.get_opcode() == Lit<6>(0x37));
+  node do_add(inst.get_opcode() == Lit<6>(0x35)),
+       do_sub(inst.get_opcode() == Lit<6>(0x36)),
+       do_mul(inst.get_opcode() == Lit<6>(0x37)),
+       do_itof(inst.get_opcode() == Lit<6>(0x33)),
+       do_ftoi(inst.get_opcode() == Lit<6>(0x34));
   
   #if 0
   node ready(_(out, "ready")), next_full, full(Reg(next_full));

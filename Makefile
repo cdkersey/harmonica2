@@ -1,4 +1,4 @@
-CXXFLAGS = -std=c++11 -O3 -DDEBUG
+CXXFLAGS = -std=c++11 -g -DDEBUG #-O3 -DDEBUG
 LDLIBS = -lchdl -lchdl-module
 ARCH = 4w8/8/1
 
