@@ -7,8 +7,9 @@
 *******************************************************************************/
 /* */
 .def THREADS 4
-.def WARPS 4
-
+.def WARPS 8
+.def LOOPS 64
+    
 .align 4096
 .perm rwx
 .entry
@@ -58,14 +59,24 @@ ploop: ld %r7, %r0, array
 dthread: ldi %r2, WARPS
 	 bar %r1, %r2
 
-	 ldi %r1, #10
-         itof %r0, %r0
-         itof %r7, %r7
-	 itof %r1, %r1
-	 fmul %r7, %r7, %r1
-	 fadd %r7, %r7, %r0
-         ftoi %r0, %r7
+         ldi %r3, THREADS
+         mul %r7, %r7, %r2
+         mul %r7, %r7, %r3
+         add %r7, %r7, %r0
+
+         ori %r1, %r7, #0
+         ldi %r2, #0
+         ldi %r4, #0
+iloop:   itof %r3, %r2
+         fadd %r4, %r4, %r3
+         st %r3, %r1, array
+
+         addi %r1, %r1, THREADS
+         addi %r2, %r2, #1
+         subi %r3, %r2, LOOPS
+         rtop @p0, %r3
+   @p0 ? jmpi iloop
     
          jmprt %r5;
 
-array: .space 64
+array: .space 1024
