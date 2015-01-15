@@ -13,7 +13,9 @@ using namespace chdl;
 void Execute(splitter_sched_t&, splitter_pred_t&, splitter_reg_t&, reg_func_t&);
 
 enum funcunit_type_t {
-  FU_ALU, FU_PLU, FU_MULT, FU_DIV, FU_LSU, FU_BRANCH, FU_BAR, FU_FPU, N_FU
+  FU_ALU,  FU_PLU,  FU_MULT, FU_DIV,  FU_LSU,  FU_BRANCH, FU_BAR,  FU_FADD,
+  FU_FMUL, FU_ITOF, FU_FTOI, FU_PAD0, FU_PAD1, FU_PAD2,   FU_PAD3, FU_PAD4,
+  N_FU
 };
 
 // Functional Unit Routing Function
@@ -27,7 +29,10 @@ void Funcunit_div(func_splitter_t &out, reg_func_t &in);
 void Funcunit_lsu(func_splitter_t &out, reg_func_t &in);
 void Funcunit_branch(func_splitter_t &out, reg_func_t &in);
 void Funcunit_bar(func_splitter_t &out, reg_func_t &in);
-void Funcunit_fpu(func_splitter_t &out, reg_func_t &in);
+void Funcunit_fmul(func_splitter_t &out, reg_func_t &in);
+void Funcunit_fadd(func_splitter_t &out, reg_func_t &in);
+void Funcunit_ftoi(func_splitter_t &out, reg_func_t &in);
+void Funcunit_itof(func_splitter_t &out, reg_func_t &in);
 
 // The execute pipeline stage
 void Execute(splitter_sched_t &out, splitter_pred_t &pwb, splitter_reg_t &rwb,
@@ -65,8 +70,12 @@ void Execute(splitter_sched_t &out, splitter_pred_t &pwb, splitter_reg_t &rwb,
   Funcunit_lsu(fu_outputs[FU_LSU], fu_inputs[FU_LSU]);
   Funcunit_branch(fu_outputs[FU_BRANCH], fu_inputs[FU_BRANCH]);
   Funcunit_bar(fu_outputs[FU_BAR], fu_inputs[FU_BAR]);
-  if (FPU)
-    Funcunit_fpu(fu_outputs[FU_FPU], fu_inputs[FU_FPU]);
+  if (FPU) {
+    Funcunit_fmul(fu_outputs[FU_FMUL], fu_inputs[FU_FMUL]);
+    Funcunit_fadd(fu_outputs[FU_FADD], fu_inputs[FU_FADD]);
+    Funcunit_ftoi(fu_outputs[FU_FTOI], fu_inputs[FU_FTOI]);
+    Funcunit_itof(fu_outputs[FU_ITOF], fu_inputs[FU_ITOF]);
+  }
 
   func_splitter_t fu_arbiter_out;
   Arbiter(fu_arbiter_out, ArbRR<N_FU>, fu_outputs);
@@ -161,12 +170,11 @@ void RouteFunc(bvec<N_FU> &valid, const reg_func_int_t &in, node in_valid) {
     inst.get_opcode() == Lit<6>(0x3d); // bar
 
   if (FPU) {
-    v[FU_FPU] =
-      inst.get_opcode() == Lit<6>(0x33) || // itof
-      inst.get_opcode() == Lit<6>(0x34) || // ftoi
-      inst.get_opcode() == Lit<6>(0x35) || // fadd
-      inst.get_opcode() == Lit<6>(0x36) || // fsub
-      inst.get_opcode() == Lit<6>(0x37);   // fmul
+    v[FU_ITOF] = inst.get_opcode() == Lit<6>(0x33); // itof
+    v[FU_FTOI] = inst.get_opcode() == Lit<6>(0x34); // ftoi
+    v[FU_FADD] = inst.get_opcode() == Lit<6>(0x35) || // fadd
+                 inst.get_opcode() == Lit<6>(0x36);   // fsub
+    v[FU_FMUL] = inst.get_opcode() == Lit<6>(0x37); // fmul
   }
   
   valid = v & bvec<N_FU>(in_valid);

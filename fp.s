@@ -5,7 +5,7 @@
  Sample HARP assmebly program.
 
 *******************************************************************************/
-/* Divergent branch: test immediate postdominator branch divergence support. */
+/* */
 .def THREADS 4
 .def WARPS 4
 
@@ -23,6 +23,8 @@ wsloop: wspawn %r0, %r0, %r1
         subi %r2, %r1, WARPS
         rtop @p0, %r2
   @p0 ? jmpi wsloop
+
+       ldi %r0, #0
 	
 wmain: ori %r7, %r0, #0
        ldi %r0, #1
@@ -38,7 +40,7 @@ sloop: clone %r0
        jalis %r5, %r1, dthread;                
 
 finish: jmpi finish;
-/*	
+    /*	
        ldi %r0, #0                             
        ldi %r1, (__WORD * THREADS)             
 
@@ -55,13 +57,15 @@ ploop: ld %r7, %r0, array
 
 dthread: ldi %r2, WARPS
 	 bar %r1, %r2
+
 	 ldi %r1, #10
          itof %r0, %r0
          itof %r7, %r7
 	 itof %r1, %r1
 	 fmul %r7, %r7, %r1
 	 fadd %r7, %r7, %r0
-
+         ftoi %r0, %r7
+    
          jmprt %r5;
 
 array: .space 64

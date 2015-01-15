@@ -13,7 +13,10 @@ using namespace std;
 using namespace chdl;
 
 // Functional Units
-void Funcunit_fpu(func_splitter_t &out, reg_func_t &in);
+void Funcunit_fmul(func_splitter_t &out, reg_func_t &in);
+void Funcunit_fadd(func_splitter_t &out, reg_func_t &in);
+void Funcunit_ftoi(func_splitter_t &out, reg_func_t &in);
+void Funcunit_itof(func_splitter_t &out, reg_func_t &in);
 
 // Interface with the modules
 typedef ag<STP("stall"),     in<node>,
@@ -22,6 +25,161 @@ typedef ag<STP("stall"),     in<node>,
         ag<STP("a"),         in<bvec<32> >,
         ag<STP("b"),         in<bvec<32> >,
         ag<STP("c"),         out<bvec<32> > > > > > > > interface_t;
+
+// Keep additional signals in the same pipeline position as the computations.
+template <typename T> T StraightPipe(node stall, const T &in, unsigned t = 0) {
+  if (t == 0) return in;
+  else        return Wreg(!stall, StraightPipe(stall, in, t-1));
+}
+
+void Funcunit_fmul(func_splitter_t &out, reg_func_t &in) {
+  const unsigned LATENCY(3);
+  node stall;
+  reg_func_t in_d(StraightPipe(stall, in, LATENCY)); // Delayed input
+  harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
+
+  vec<L, interface_t> iface;
+  for (unsigned l = 0; l < L; ++l) {
+    Load("fmul.nand")("io", iface[l]);
+    _(iface[l], "valid_in") = _(in, "valid") && !stall;
+    _(iface[l], "stall") = stall;
+    _(iface[l], "a") = _(_(_(in, "contents"), "rval"), "val0")[l];
+    _(iface[l], "b") = _(_(_(in, "contents"), "rval"), "val1")[l];
+    _(_(_(out, "contents"), "rwb"), "val")[l] = _(iface[l], "c");
+  }
+
+
+  tap("fmul_iface", iface);
+  tap("fmul_in", in);
+  tap("fmul_in_d", in_d);
+
+  _(out, "valid") = _(in_d, "valid"); //_(iface[0], "valid_out");
+  stall = _(out, "valid") && !_(out, "ready");
+  _(_(out, "contents"), "warp") = _(_(in_d, "contents"), "warp");
+  _(_(out, "contents"), "spawn") = Lit(0);
+
+  bvec<L> pmask(_(_(_(in_d, "contents"), "pval"), "pmask")),
+          active(_(_(_(in_d, "contents"), "warp"), "active"));
+  _(_(_(out, "contents"), "rwb"), "mask") = pmask & active;
+  _(_(_(out, "contents"), "rwb"), "dest") = inst.get_rdst();
+  _(_(_(out, "contents"), "rwb"), "wid") = _(_(_(in_d, "contents"),"warp"),"id");
+  _(_(_(out, "contents"), "rwb"), "clone") = Lit(0);
+  _(_(_(out, "contents"), "pwb"), "mask") = Lit<L>(0);
+
+  _(in, "ready") = !stall;
+}
+
+void Funcunit_fadd(func_splitter_t &out, reg_func_t &in) {
+  const unsigned LATENCY(3);
+  node stall;
+  reg_func_t in_d(StraightPipe(stall, in, LATENCY)); // Delayed input
+  harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
+
+  vec<L, interface_t> iface;
+  for (unsigned l = 0; l < L; ++l) {
+    Load("fadd.nand")("io", iface[l]);
+    _(iface[l], "valid_in") = _(in, "valid") && !stall;
+    _(iface[l], "stall") = stall;
+    _(iface[l], "a") = _(_(_(in, "contents"), "rval"), "val0")[l];
+    _(iface[l], "b")[range<0,30>()] =
+      _(_(_(in, "contents"), "rval"), "val1")[l][range<0,30>()];
+    _(iface[l], "b")[31] = Xor(
+      inst.get_opcode()[1],
+      _(_(_(in, "contents"), "rval"), "val1")[l][31]
+    );
+    _(_(_(out, "contents"), "rwb"), "val")[l] = _(iface[l], "c");
+  }
+
+  tap("fadd_iface", iface);
+  tap("fadd_in", in);
+  tap("fadd_in_d", in_d);
+
+  _(out, "valid") = _(iface[0], "valid_out");
+  stall = _(out, "valid") && !_(out, "ready");
+  _(_(out, "contents"), "warp") = _(_(in_d, "contents"), "warp");
+  _(_(out, "contents"), "spawn") = Lit(0);
+
+  bvec<L> pmask(_(_(_(in_d, "contents"), "pval"), "pmask")),
+          active(_(_(_(in_d, "contents"), "warp"), "active"));
+  _(_(_(out, "contents"), "rwb"), "mask") = pmask & active;
+  _(_(_(out, "contents"), "rwb"), "dest") = inst.get_rdst();
+  _(_(_(out, "contents"), "rwb"), "wid") = _(_(_(in_d, "contents"),"warp"),"id");
+  _(_(_(out, "contents"), "rwb"), "clone") = Lit(0);
+  _(_(_(out, "contents"), "pwb"), "mask") = Lit<L>(0);
+
+  _(in, "ready") = !stall;
+}
+
+void Funcunit_ftoi(func_splitter_t &out, reg_func_t &in) {
+  const unsigned LATENCY(3);
+  node stall;
+  reg_func_t in_d(StraightPipe(stall, in, LATENCY)); // Delayed input
+  harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
+
+  vec<L, interface_t> iface;
+  for (unsigned l = 0; l < L; ++l) {
+    Load("ftoi.nand")("io", iface[l]);
+    _(iface[l], "valid_in") = _(in, "valid") && !stall;
+    _(iface[l], "stall") = stall;
+    _(iface[l], "a") = _(_(_(in, "contents"), "rval"), "val0")[l];
+    _(_(_(out, "contents"), "rwb"), "val")[l] = _(iface[l], "c");
+  }
+
+  tap("ftoi_iface", iface);
+  tap("ftoi_in", in);
+  tap("ftoi_in_d", in_d);
+  
+
+  _(out, "valid") = _(iface[0], "valid_out");
+  stall = _(out, "valid") && !_(out, "ready");
+  _(_(out, "contents"), "warp") = _(_(in_d, "contents"), "warp");
+  _(_(out, "contents"), "spawn") = Lit(0);
+
+  bvec<L> pmask(_(_(_(in_d, "contents"), "pval"), "pmask")),
+          active(_(_(_(in_d, "contents"), "warp"), "active"));
+  _(_(_(out, "contents"), "rwb"), "mask") = pmask & active;
+  _(_(_(out, "contents"), "rwb"), "dest") = inst.get_rdst();
+  _(_(_(out, "contents"), "rwb"), "wid") = _(_(_(in_d, "contents"),"warp"),"id");
+  _(_(_(out, "contents"), "rwb"), "clone") = Lit(0);
+  _(_(_(out, "contents"), "pwb"), "mask") = Lit<L>(0);
+
+  _(in, "ready") = !stall;
+}
+
+void Funcunit_itof(func_splitter_t &out, reg_func_t &in) {
+  const unsigned LATENCY(3);
+  node stall;
+  reg_func_t in_d(StraightPipe(stall, in, LATENCY)); // Delayed input
+  harpinst<N, RR, RR> inst(_(_(in, "contents"), "ir"));
+
+  vec<L, interface_t> iface;
+  for (unsigned l = 0; l < L; ++l) {
+    Load("itof.nand")("io", iface[l]);
+    _(iface[l], "valid_in") = _(in, "valid") && !stall;
+    _(iface[l], "stall") = stall;
+    _(iface[l], "a") = _(_(_(in, "contents"), "rval"), "val0")[l];
+    _(_(_(out, "contents"), "rwb"), "val")[l] = _(iface[l], "c");
+  }
+
+  tap("itof_iface", iface);
+  tap("itof_in", in);
+  tap("itof_in_d", in_d);
+
+  _(out, "valid") = _(iface[0], "valid_out");
+  stall = _(out, "valid") && !_(out, "ready");
+  _(_(out, "contents"), "warp") = _(_(in_d, "contents"), "warp");
+  _(_(out, "contents"), "spawn") = Lit(0);
+
+  bvec<L> pmask(_(_(_(in_d, "contents"), "pval"), "pmask")),
+          active(_(_(_(in_d, "contents"), "warp"), "active"));
+  _(_(_(out, "contents"), "rwb"), "mask") = pmask & active;
+  _(_(_(out, "contents"), "rwb"), "dest") = inst.get_rdst();
+  _(_(_(out, "contents"), "rwb"), "wid") = _(_(_(in_d, "contents"),"warp"),"id");
+  _(_(_(out, "contents"), "rwb"), "clone") = Lit(0);
+  _(_(_(out, "contents"), "pwb"), "mask") = Lit<L>(0);
+
+  _(in, "ready") = !stall;
+}
 
 // Functional Unit: Floating Point Add/Multiply
 void Funcunit_fpu(func_splitter_t &out, reg_func_t &in) {
@@ -77,6 +235,8 @@ void Funcunit_fpu(func_splitter_t &out, reg_func_t &in) {
 
     // TODO: route output.
   }
+
+  _(out, "valid") = out_valid;
 
   
   
