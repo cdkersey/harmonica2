@@ -104,19 +104,34 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
 
   TAP(out_mr);
 
-  Scratchpad<10 - CLOG2(LINE)>(out_mr, in_mr);
+  Scratchpad<16 - CLOG2(LINE)>(out_mr, in_mr);
 
   
   #if 1
   _(in, "ready") = _(in_mr, "ready");
 
   _(out_mr, "ready") = _(out, "ready");
-  _(out, "valid") = _(out_mr, "valid");
+  _(out, "valid") = _(out_mr, "valid") && !_(_(out_mr, "contents"), "wr");
   _(_(out, "contents"), "q") = _(_(out_mr, "contents"), "data");
   _(_(out, "contents"), "lane") =
     _(_(out_mr, "contents"), "id")[range<0,LL-1>()];
   _(_(out, "contents"), "wid") =
     _(_(out_mr, "contents"), "id")[range<LL,LL+WW-1>()];
+
+  if (SOFT_IO && !FPGA) {
+    static unsigned consoleOutVal;
+    node wrConsole(_(in, "ready") && _(in, "valid") &&
+                   _(_(in, "contents"), "wr") &&
+                   _(_(in, "contents"), "a")[N-1]);
+    EgressInt(consoleOutVal, _(_(in, "contents"), "d")[0]);
+    EgressFunc(
+      [](bool x){if (x) cout << char(consoleOutVal);},
+      wrConsole
+    );
+
+    TAP(wrConsole);
+    tap("consoleVal", _(_(in, "contents"), "d")[0]);
+  }
   #else
   const unsigned DCS(CLOG2(DUMMYCACHE_SZ));
 
@@ -318,7 +333,10 @@ void MemSystem(h2_mem_resp_t &out, h2_mem_req_t &in) {
 
   ASSERT(!OrN(returnedReqMask & ~sentReqMask));
 
-  _(out, "valid") = full && (returnedReqMask == allReqMask);
+  _(out, "valid") = full &&
+    Mux(_(_(cache_req, "contents"), "wr"),
+      (returnedReqMask == allReqMask),
+      (sentReqMask == allReqMask));
 
   _(_(out, "contents"), "wid") = Wreg(fill, _(_(in, "contents"), "wid"));
   _(_(out, "contents"), "q") = qReg;
