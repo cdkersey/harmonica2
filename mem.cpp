@@ -4,6 +4,7 @@
 #include <chdl/cassign.h>
 #include <chdl/egress.h>
 #include <chdl/memreq.h>
+#include <chdl/loader.h>
 
 #include "config.h"
 #include "interfaces.h"
@@ -86,12 +87,14 @@ void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
   HIERARCHY_EXIT();
 }
 
-void DummyCache(cache_resp_t &out, cache_req_t &in) {
+void CacheIface(cache_resp_t &out, cache_req_t &in) {
   // Try to convert cache_req_t to chdl::mem_req
-  mem_req<N, LINE, N, WW + LL> in_mr;
+  const unsigned long ABITS(N - CLOG2(LINE * N / 8));
+  mem_req<N, LINE, ABITS, WW + LL> in_mr;
   _(in_mr, "valid") = _(in, "valid");
   _(_(in_mr, "contents"), "wr") = _(_(in, "contents"), "wr");
-  _(_(in_mr, "contents"), "addr") = _(_(in, "contents"), "a");
+  _(_(in_mr, "contents"), "addr") =
+    _(_(in, "contents"), "a")[range<CLOG2(LINE * N / 8),N-1>()];
   _(_(in_mr, "contents"), "data") = _(_(in, "contents"), "d");
   _(_(in_mr, "contents"), "mask") = _(_(in, "contents"), "mask");
   _(_(in_mr, "contents"), "id") =
@@ -104,10 +107,13 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
 
   TAP(out_mr);
 
-  Scratchpad<16 - CLOG2(LINE)>(out_mr, in_mr);
-
+  if (EXT_DMEM) {
+    Expose("dmem_req", out_mem_req<N,LINE,ABITS,WW+LL>(in_mr));
+    Expose("dmem_resp", in_mem_resp<N,LINE,WW+LL>(out_mr));
+  } else {
+    Scratchpad<CLOG2(DUMMYCACHE_SZ)>(out_mr, in_mr);
+  }
   
-  #if 1
   _(in, "ready") = _(in_mr, "ready");
 
   _(out_mr, "ready") = _(out, "ready");
@@ -132,94 +138,6 @@ void DummyCache(cache_resp_t &out, cache_req_t &in) {
     TAP(wrConsole);
     tap("consoleVal", _(_(in, "contents"), "d")[0]);
   }
-  #else
-  const unsigned DCS(CLOG2(DUMMYCACHE_SZ));
-
-  node ready = _(out, "ready");
-  _(in, "ready") = ready;
-
-  node ldregs(ready && _(in, "valid")), next_full, full(Reg(next_full));
-
-  Cassign(next_full).
-    IF(!full && _(in, "valid") && ready, Lit(1)).
-    IF(full && (!_(in, "valid") || !ready), Lit(0)).
-    ELSE(full);
-
-  _(out, "valid") = full;
-  _(_(out, "contents"), "wid") = Wreg(ldregs, _(_(in, "contents"), "wid"));
-
-  bvec<N> a(_(_(in, "contents"), "a"));
-  bvec<CLOG2(DCS)> devAddr(
-    a[range<CLOG2(LINE*(N/8)), CLOG2(LINE*(N/8))+CLOG2(DCS)-1>()]
-  );
-
-  vec<LINE, bvec<N> > memd(_(_(in, "contents"), "d"));
-  vec<LINE, bvec<N> > memq;
-  for (unsigned i = 0; i < LINE; ++i) {
-    node wr(ready && _(in, "valid") && _(_(in, "contents"), "mask")[i] &&
-              _(_(in, "contents"), "wr"));
-
-    memq[i] = Syncmem(devAddr, memd[i], wr);
-
-    if (i == 0 && SOFT_IO && !FPGA) {
-      static unsigned consoleOutVal;
-      node wrConsole(wr && a[N-1]);
-      EgressInt(consoleOutVal, memd[i]);
-      EgressFunc(
-        [](bool x){if (x) cout << char(consoleOutVal);},
-        wrConsole
-      );
-
-      TAP(wrConsole);
-      tap("consoleVal", memd[i]);
-    }
-
-    if (i == 0 && FPGA && FPGA_IO) {    
-      node wrConsole(Reg(wr && a[N-1]));
-      OUTPUT(wrConsole);
-      bvec<8> consoleOutVal(Wreg(wr && a[N-1], memd[i][range<0,7>()]));
-      OUTPUT(consoleOutVal);
-    }
-  }
-
-  if (!FPGA && DEBUG_MEM) {
-    static unsigned long addrVal, dVal[LINE], qVal[LINE], warpId;
-    static bool wrVal, maskVal[LINE];
-    Egress(wrVal, Reg(ready && _(in, "valid") && _(_(in, "contents"), "wr")));
-    for (unsigned l = 0; l < LINE; ++l) {
-      EgressInt(dVal[l], Reg(memd[l]));
-      Egress(maskVal[l], Reg(_(_(in, "contents"), "mask")[l]));
-      EgressInt(qVal[l], memq[l]);
-    }
-
-    EgressInt(addrVal, Reg(a));
-    EgressInt(warpId, Reg(_(_(in, "contents"), "wid")));
-    EgressFunc([](bool x) {
-      if (x) {
-        cout << warpId << ": Mem " << (wrVal?"store":"load") << ':' << endl;
-        for (unsigned l = 0; l < LINE; ++l) {
-          if (maskVal[l]) {
-            cout << "  0x" << hex << addrVal + l*(N/8);
-            if (wrVal) cout << hex << ": 0x" << dVal[l];
-            else cout << hex << ": 0x" << qVal[l];
-            cout << endl;
-          }
-        }
-      }
-    }, Reg(ready && _(in, "valid")));
-  }
-
-  vec<LINE, bvec<N> > held_memq;
-  Flatten(held_memq) = Wreg(ldregs, Flatten(memq));
-
-  tap("dummy_cache_memq", memq);
-  TAP(devAddr);
-
-  Flatten(_(_(out, "contents"), "q")) =
-    Mux(ready && Reg(ready), Flatten(held_memq), Flatten(memq));
-
-  _(_(out, "contents"), "lane") = Wreg(ldregs, _(_(in, "contents"), "lane"));
-  #endif
 }
 
 void MemSystem(h2_mem_resp_t &out, h2_mem_req_t &in) {
@@ -318,7 +236,7 @@ void MemSystem(h2_mem_resp_t &out, h2_mem_req_t &in) {
 
   _(cache_req, "valid") = full && sentReqMask != allReqMask;
 
-  DummyCache(cache_resp, cache_req);
+  CacheIface(cache_resp, cache_req);
 
   _(cache_resp, "ready") = full && returnedReqMask != allReqMask;
 
