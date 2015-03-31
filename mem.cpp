@@ -108,8 +108,10 @@ void CacheIface(cache_resp_t &out, cache_req_t &in) {
   TAP(out_mr);
 
   if (EXT_DMEM) {
-    Expose("dmem_req", out_mem_req<N,LINE,ABITS,WW+LL>(in_mr));
-    Expose("dmem_resp", in_mem_resp<N,LINE,WW+LL>(out_mr));
+    out_mem_port<N, LINE, ABITS, WW + LL> dmem;
+    Connect(_(dmem, "resp"), out_mr);
+    Connect(_(dmem, "req"), in_mr);
+    EXPOSE(dmem);
   } else {
     Scratchpad<CLOG2(DUMMYCACHE_SZ)>(out_mr, in_mr);
   }
