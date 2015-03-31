@@ -54,8 +54,7 @@ void Fetch(fetch_pred_t &out, sched_fetch_t &in, string romFile) {
     out_mem_port<8, N/8, N - (NN-3), WW> imem;
     Connect(_(imem, "req"), req);
     Connect(_(imem, "resp"), resp);
-    Expose("imem_req", req);
-    Expose("imem_resp", resp);
+    EXPOSE(imem);
   } else {
     node ready(_(out, "ready"));
 
