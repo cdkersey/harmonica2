@@ -25,11 +25,11 @@ void Fetch(fetch_pred_t &out, sched_fetch_t &in, string romFile) {
       abort();
     }
 
-    typedef mem_req<8, N/8, N - (NN - 3), WW> req_t;
-    typedef mem_resp<8, N/8, WW> resp_t;
-
-    req_t req;
-    resp_t resp;
+    out_mem_port<8, N/8, N - (NN - 3), WW> imem;
+    #define req _(imem, "req")
+    #define resp _(imem, "resp")
+    // out_mem_req<8, N/8, N - (NN - 3), WW> req(_(imem, "req"));
+    // in_mem_resp<8, N/8, WW> resp(_(imem, "resp"));
 
     _(in, "ready") = _(req, "ready");
     _(resp, "ready") = _(out, "ready");
@@ -51,9 +51,6 @@ void Fetch(fetch_pred_t &out, sched_fetch_t &in, string romFile) {
 
     _(_(out, "contents"), "ir") = Flatten(_(_(resp, "contents"), "data"));
 
-    out_mem_port<8, N/8, N - (NN-3), WW> imem;
-    Connect(_(imem, "req"), req);
-    Connect(_(imem, "resp"), resp);
     EXPOSE(imem);
   } else {
     node ready(_(out, "ready"));

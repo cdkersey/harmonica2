@@ -90,7 +90,11 @@ void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
 void CacheIface(cache_resp_t &out, cache_req_t &in) {
   // Try to convert cache_req_t to chdl::mem_req
   const unsigned long ABITS(N - CLOG2(LINE * N / 8));
-  mem_req<N, LINE, ABITS, WW + LL> in_mr;
+
+  out_mem_port<N, LINE, ABITS, WW + LL> dmem;
+  out_mem_req<N, LINE, ABITS, WW + LL> &in_mr(_(dmem, "req"));
+  in_mem_resp<N, LINE, WW + LL> &out_mr(_(dmem, "resp"));
+
   _(in_mr, "valid") = _(in, "valid");
   _(_(in_mr, "contents"), "wr") = _(_(in, "contents"), "wr");
   _(_(in_mr, "contents"), "addr") =
@@ -102,18 +106,16 @@ void CacheIface(cache_resp_t &out, cache_req_t &in) {
   _(_(in_mr, "contents"), "llsc") = Lit(0);
 
   TAP(in_mr);
-
-  mem_resp<N, LINE, WW + LL> out_mr;
-
   TAP(out_mr);
 
   if (EXT_DMEM) {
-    out_mem_port<N, LINE, ABITS, WW + LL> dmem;
-    Connect(_(dmem, "resp"), out_mr);
-    Connect(_(dmem, "req"), in_mr);
     EXPOSE(dmem);
   } else {
-    Scratchpad<CLOG2(DUMMYCACHE_SZ)>(out_mr, in_mr);
+    mem_req<N, LINE, ABITS, WW + LL> req;
+    mem_resp<N, LINE, WW + LL> resp;
+    Scratchpad<CLOG2(DUMMYCACHE_SZ)>(resp, req);
+    Connect(req, in_mr);
+    Connect(resp, out_mr);
   }
   
   _(in, "ready") = _(in_mr, "ready");
