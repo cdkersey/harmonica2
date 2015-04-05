@@ -26,10 +26,8 @@ void Fetch(fetch_pred_t &out, sched_fetch_t &in, string romFile) {
     }
 
     out_mem_port<8, N/8, N - (NN - 3), WW> imem;
-    #define req _(imem, "req")
-    #define resp _(imem, "resp")
-    // out_mem_req<8, N/8, N - (NN - 3), WW> req(_(imem, "req"));
-    // in_mem_resp<8, N/8, WW> resp(_(imem, "resp"));
+    out_mem_req<8, N/8, N - (NN - 3), WW> &req(_(imem, "req"));
+    in_mem_resp<8, N/8, WW> &resp(_(imem, "resp"));
 
     _(in, "ready") = _(req, "ready");
     _(resp, "ready") = _(out, "ready");
