@@ -45,7 +45,7 @@ void Fetch(fetch_pred_t &out, sched_fetch_t &in, string romFile) {
     
     // Using LLRam; asynchronous access is more important than chip area
     Flatten(_(_(out, "contents"), "warp")) =
-      LLRam(in_warp_id, Flatten(_(in, "contents")), resp_warp_id, in_valid);
+      LLRam(resp_warp_id, Flatten(_(in, "contents")), in_warp_id, in_valid);
 
     _(_(out, "contents"), "ir") = Flatten(_(_(resp, "contents"), "data"));
 
