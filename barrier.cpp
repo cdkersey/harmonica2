@@ -61,7 +61,7 @@ void Funcunit_bar(func_splitter_t &out, reg_func_t &in) {
   TAP(n);
   TAP(state);
 
-  node wr(state_1h[ST_WRITE]), filled, all_released;
+  node wr(state_1h[ST_WRITE] || state_1h[ST_CLEAR]), filled, all_released;
   barrier_t d, q(Syncmem(id, Flatten(d), wr));
 
   Cassign(next_state).
@@ -84,7 +84,7 @@ void Funcunit_bar(func_splitter_t &out, reg_func_t &in) {
   Cassign(idx).
     IF(_(q, "valid"), _(q, "arrived")).
     ELSE(Lit<WW>(0));
-  _(d, "arrived") = idx + Lit<WW>(1);
+  _(d, "arrived") = Mux(state_1h[ST_CLEAR], idx + Lit<WW>(1), Lit<WW>(0));
 
   // In release mode, maintain a counter that increments every time we send
   // another warp back out into the pipeline to join its friends.
