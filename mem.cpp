@@ -223,7 +223,7 @@ void MemSystem(h2_mem_resp_t &out, h2_mem_req_t &in) {
       maskBits[l] =
         (aReg[l][range<NB, LB-1>()] == Lit<CLOG2(LINE)>(i)) &&
         (aReg[l][range<LB, N-1>()] == reqAddr[range<LB, N-1>()]) &&
-        maskReg[l] && _(_(in, "contents"), "mask")[l];
+        maskReg[l];
     
     _(_(cache_req, "contents"), "mask")[i] = OrN(maskBits);
     _(_(cache_req, "contents"), "d")[i] = Mux(Log2(maskBits), dReg);
@@ -233,8 +233,8 @@ void MemSystem(h2_mem_resp_t &out, h2_mem_req_t &in) {
     tap(oss.str(), maskBits);
   }
 
-  
-
+  TAP(reqAddr);
+  TAP(maskReg);
   TAP(cache_req);
   TAP(cache_resp);
 
