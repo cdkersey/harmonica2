@@ -1,5 +1,5 @@
-CXXFLAGS = -std=c++11 -O3 # -g
-LDLIBS = -lchdl -lchdl-module
+CXXFLAGS += -std=c++11 -O3 # -g
+LDLIBS += -lchdl -lchdl-module
 ARCH = 4w8/8/1
 
 all : sieve.vcd
