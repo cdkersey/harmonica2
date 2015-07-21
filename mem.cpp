@@ -66,7 +66,7 @@ void Funcunit_lsu(func_splitter_t &out, reg_func_t &in)
   // Keep track of whether operations issued to memory system were stores
   node issue(_(in, "ready") && _(in, "valid"));
   bvec<L> ldMask(Wreg(issue,
-    bvec<L>(inst.has_rdst()) & _(_(_(in, "contents"), "pval"), "pmask")
+    bvec<L>(inst.has_rdst()) & _(_(_(in, "contents"), "pval"), "pmask") & active
   ));
   bvec<RR> ldDest(Wreg(issue, inst.get_rdst()));
 
