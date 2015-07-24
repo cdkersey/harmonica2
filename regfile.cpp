@@ -79,10 +79,10 @@ void PredRegs(pred_reg_t &out, fetch_pred_t &in, splitter_pred_t &wb) {
 
   // The mask should be all 1s if the instruction is not predicated.
   _(_(_(out, "contents"), "pval"), "pmask") 
-    = Latch(!ready, pmask | bvec<L>(Reg(!inst.has_pred())));
+    = Latch(Reg(!ready), pmask | bvec<L>(Reg(!inst.has_pred())));
 
-  _(_(_(out, "contents"), "pval"), "val0") = Latch(!ready, pval0);
-  _(_(_(out, "contents"), "pval"), "val1") = Latch(!ready, pval1);
+  _(_(_(out, "contents"), "pval"), "val0") = Latch(Reg(!ready), pval0);
+  _(_(_(out, "contents"), "pval"), "val1") = Latch(Reg(!ready), pval1);
 
   HIERARCHY_EXIT();
 }
