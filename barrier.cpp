@@ -46,7 +46,7 @@ void Funcunit_bar(func_splitter_t &out, reg_func_t &in) {
                    id_v(_(_(_(in,"contents"),"rval"),"val0"));
 
   bvec<LL> lane_sel(Lsb(active & pmask));
-  node arrive(_(in, "valid") && OrN(active & pmask));
+  node arrive(_(in, "ready") && _(in, "valid") && OrN(active & pmask));
 
   bvec<CLOG2(BARRIERS)> id(Latch(
     !arrive, Zext<CLOG2(BARRIERS)>(Mux(lane_sel, id_v))
