@@ -15,6 +15,14 @@ using namespace chdl;
 // The full Processor
 void Harmonica2();
 
+bvec<1> PopCount(const bvec<1> &x) { return bvec<1>(x[0]); }
+
+template <unsigned N> bvec<LOG2(N) + 1> PopCount(const bvec<N> &x) {
+  bvec<N/2> a(x[range<0,N/2-1>()]);
+  bvec<N - N/2> b(x[range<N/2,N-1>()]);
+  return Zext<LOG2(N) + 1>(PopCount(a)) + Zext<LOG2(N) + 1>(PopCount(b));
+} 
+
 // The pipeline stages
 void Sched(sched_fetch_t &out, splitter_sched_t &in);
 void Fetch(fetch_pred_t &out, sched_fetch_t &in, string romFile);
@@ -44,7 +52,9 @@ void Harmonica2(string romFile) {
   TAP(sf); TAP(fp); TAP(pr); TAP(rx); TAP(xs); TAP(xp); TAP(xr);
 
   Counter("cycles", Lit(1));
-  Counter("insts", _(xs, "ready") && _(xs, "valid"));
+  Counter("insts",
+          PopCount(_(_(_(xs, "contents"), "warp"), "active")),
+          _(xs, "ready") && _(xs, "valid"));
 
   HIERARCHY_EXIT();
 }
