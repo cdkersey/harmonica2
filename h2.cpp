@@ -8,20 +8,13 @@
 #include "config.h"
 #include "interfaces.h"
 #include "harpinst.h"
+#include "util.h"
 
 using namespace std;
 using namespace chdl;
 
 // The full Processor
 void Harmonica2();
-
-bvec<1> PopCount(const bvec<1> &x) { return bvec<1>(x[0]); }
-
-template <unsigned N> bvec<LOG2(N) + 1> PopCount(const bvec<N> &x) {
-  bvec<N/2> a(x[range<0,N/2-1>()]);
-  bvec<N - N/2> b(x[range<N/2,N-1>()]);
-  return Zext<LOG2(N) + 1>(PopCount(a)) + Zext<LOG2(N) + 1>(PopCount(b));
-} 
 
 // The pipeline stages
 void Sched(sched_fetch_t &out, splitter_sched_t &in);

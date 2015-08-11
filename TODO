@@ -1,9 +1,11 @@
-- Write a test that covers all instructions and produces predictable,
-  automatically verifiable results.
-- Write memory mapped IO module using address-based routing module
-- Add a few more judicious assertions.
+Bugs:
 
-Lane control:           (clonew)
-Kernel mode/exceptions: di  ei  skep  halt  trap  jmpru  reti
-Floating point:         itof  ftoi  fadd  fsub  fmul  fdiv  fneg
-Virtual memory:         tlbadd  tlbflush  tlbrm
+Planned features:
+  - New memory coalescing unit in mem.h
+  - Built-in floating point
+    - at least move the FPU functional units into this tree
+  - Simplify simulation by removing SIMULATE configure option and SOFT_IO.
+
+Wishlist:
+  Kernel mode/exceptions: di  ei  skep  halt  trap  jmpru  reti
+  Virtual memory:         tlbadd  tlbflush  tlbrm
