@@ -82,7 +82,7 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
       Wreg(ldregs, _(_(_(in, "contents"), "rval"), "val1")[0]));
 
   // Handle split and join instructions
-  node push, pop;
+  node push, push1, pop;
   ipdom_stack_entry_t otherbranch, fallthrough;
   _(otherbranch, "fallthrough") = Lit(0);
   _(fallthrough, "fallthrough") = Lit(1);
@@ -91,12 +91,20 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
   _(otherbranch, "pc") = pc;
   _(fallthrough, "pc") = Lit<N>(0);
 
+  node unanimous_split((active&pmask) == active || (active&~pmask) == active);
+
+  TAP(unanimous_split);
+  
   ipdom_stack_entry_t top(IpdomStack<IPDOM_STACK_SZ>(
-    push, Lit(0), pop, otherbranch, fallthrough, wid
+    push, push1, pop, otherbranch, fallthrough, wid
   ));
 
-  push = inst.get_opcode() == Lit<6>(0x3b) && _(in, "ready") && _(in, "valid"); // split
-  pop = inst.get_opcode() == Lit<6>(0x3c) && _(in, "ready") && _(in, "valid"); // join
+  push = inst.get_opcode() == Lit<6>(0x3b) && !unanimous_split
+    && _(in, "ready") && _(in, "valid"); // split
+  push1 = inst.get_opcode() == Lit<6>(0x3b) && unanimous_split
+    && _(in, "ready") && _(in, "valid"); // split- same direction
+  pop = inst.get_opcode() == Lit<6>(0x3c)
+    && _(in, "ready") && _(in, "valid"); // join
 
   Cassign(outMask).
     IF(taken).
