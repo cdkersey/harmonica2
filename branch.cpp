@@ -112,7 +112,8 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
          || inst.get_opcode() == Lit<6>(0x21),
            Zext<L>((Lit<L+1>(1) << Zext<CLOG2(L+1)>(rval0)) - Lit<L+1>(1))).
       IF(inst.get_opcode() == Lit<6>(0x22), Lit<L>(1)).     // jmprt
-      IF(inst.get_opcode() == Lit<6>(0x3b), active & pmask).
+      IF(inst.get_opcode() == Lit<6>(0x3b) && !unanimous_split, active & pmask).
+      IF(inst.get_opcode() == Lit<6>(0x3b) && unanimous_split, active).
       IF(inst.get_opcode() == Lit<6>(0x3c), _(top, "mask")).
       ELSE(active).END().ELSE(active);
 
