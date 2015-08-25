@@ -18,7 +18,8 @@ typedef ag<STP("fallthrough"), node,
         ag<STP("pc"), bvec<N> > > > ipdom_stack_entry_t;
 
 template <unsigned N, typename T> T IpdomStack(
-  node push, node pop, const T& tval, const T& bval, const bvec<WW> &wid
+  node push2, node push1, node pop,
+  const T& tval, const T& bval, const bvec<WW> &wid
 );
 
 // Execute branch instructions
@@ -91,7 +92,7 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
   _(fallthrough, "pc") = Lit<N>(0);
 
   ipdom_stack_entry_t top(IpdomStack<IPDOM_STACK_SZ>(
-    push, pop, otherbranch, fallthrough, wid
+    push, Lit(0), pop, otherbranch, fallthrough, wid
   ));
 
   push = inst.get_opcode() == Lit<6>(0x3b) && _(in, "ready") && _(in, "valid"); // split
@@ -133,14 +134,16 @@ void Funcunit_branch(func_splitter_t &out, reg_func_t &in) {
 // We implement it here with registers.
 // It does not have to handle simultaneous pushes and pops.
 template <unsigned N, typename T> T IpdomStack(
-  node push, node pop, const T& tval, const T& bval, const bvec<WW> &wid
+  node push2, node push1, node pop,
+  const T& tval, const T& bval, const bvec<WW> &wid
 )
 {
   vec<W, bvec<N+1> > next_count, count;
   for (unsigned w = 0; w < W; ++w) {
     node wsel(wid == Lit<WW>(w));
     Cassign(next_count[w]).
-      IF(push && wsel, count[w] + Lit<N+1>(2)).
+      IF(push2 && wsel, count[w] + Lit<N+1>(2)).
+      IF(push1 && wsel, count[w] + Lit<N+1>(1)).
       IF(pop && wsel, count[w] - Lit<N+1>(1)).
       ELSE(count[w]);
     count[w] = Reg(next_count[w]);
@@ -154,8 +157,9 @@ template <unsigned N, typename T> T IpdomStack(
     for (unsigned i = 0; i < (1<<N); ++i) {
       T next;
       Cassign(next).
-        IF(wsel && push && count[w] == Lit<N+1>(i - 1), tval).
-        IF(wsel && push && count[w] == Lit<N+1>(i), bval).
+        IF(wsel && push2 && count[w] == Lit<N+1>(i - 1), tval).
+        IF(wsel && push2 && count[w] == Lit<N+1>(i), bval).
+        IF(wsel && push1 && count[w] == Lit<N+1>(i), bval).	
         ELSE(store[w][i]);
       store[w][i] = Reg(next);
     }
