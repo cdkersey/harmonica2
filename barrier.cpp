@@ -62,7 +62,7 @@ void Funcunit_bar(func_splitter_t &out, reg_func_t &in) {
   TAP(state);
 
   node wr(state_1h[ST_WRITE] || state_1h[ST_CLEAR]), filled, all_released;
-  barrier_t d, q(Syncmem(id, Flatten(d), wr));
+  barrier_t d, q(/*Syncmem*/LLRam(id, Flatten(d), wr));
 
   Cassign(next_state).
     IF(state_1h[ST_IDLE] && arrive, Lit<SS>(ST_WRITE)).
