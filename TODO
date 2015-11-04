@@ -1,10 +1,10 @@
 Bugs:
 
 Planned features:
+  - Finish the README!
   - New memory coalescing unit in mem.h
   - Built-in floating point
     - at least move the FPU functional units into this tree
-  - Simplify simulation by removing SIMULATE configure option and SOFT_IO.
 
 Wishlist:
   Kernel mode/exceptions: di  ei  skep  halt  trap  jmpru  reti

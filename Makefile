@@ -1,8 +1,5 @@
 CXXFLAGS += -std=c++11 -g #-O3
 LDLIBS += -lchdl -lchdl-module
-ARCH = 4w8/8/4
-
-all : sieve.vcd
 
 h2: regfile.o h2.o alu.o exec.o fpu.o sched.o fetch.o mem.o muldiv.o branch.o \
     barrier.o
@@ -19,20 +16,6 @@ mem.o: mem.cpp config.h interfaces.h util.h
 muldiv.o: muldiv.cpp config.h interfaces.h
 branch.o: branch.cpp config.h interfaces.h
 barrier.o: barrier.cpp config.h interfaces.h
-
-%.hex : %.bin
-	hexdump -v -e '1/4 "%08x" "\n"' $< > $@
-#       hexdump -v -e '2/4 "%08x " "\n"' $< | \
-#          sed 's/\([0-9a-f]*\) \([0-9a-f]*\)/\2\1/' > $@
-
-%.bin : %.HOF lib.HOF
-	harptool -L --arch $(ARCH) -o $@ $< lib.HOF
-
-%.HOF : %.s
-	harptool -A --arch $(ARCH) -o $@ $<
-
-%.vcd : %.hex h2
-	./h2 $< $@ | tee $*.out
 
 clean:
 	rm -f h2 *.vcd h2.crit h2.nand h2.v *.o *~ *.hex *.bin *.HOF *.out

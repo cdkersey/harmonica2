@@ -71,18 +71,9 @@ int main(int argc, char **argv) {
     print_verilog("h2", vl);
   }
 
-  if (NETLIST) {
-    // Emit netlist
-    ofstream nl("h2.nand");
-    print_netlist(nl);
-  }
+  // Emit netlist
+  ofstream nl("h2.nand");
+  print_netlist(nl);
  
-  if (SIMULATE) {
-    // Run a simulation
-    string vcdFile(argc < 2 ? "h2.vcd" : argv[2]);
-    ofstream vcd(vcdFile);
-    run(vcd, 10000);
-  }
-
   return 0;
 }

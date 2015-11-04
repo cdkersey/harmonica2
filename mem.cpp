@@ -165,51 +165,10 @@ void Funcunit_lsu(func_splitter_t &out_buffered, reg_func_t &in)
     IF(from_pending, Lsb(pending)).
     ELSE(Lsb(finished));
 
-  if (EXT_DMEM) {
-    for (unsigned l = 0; l < L; ++l) {
-      ostringstream oss;
-      oss << "dmem_" << l;
-      Expose(oss.str(), dmem[l]);
-    }
-  } else {
-    vec<L, mem_port<8, N/8, ABITS, WW> > dmem_undirected, dmem_buffered;
-    mem_port<8, N/8, ABITS, WW + LL> dmem_scratchpad;
-
-    for (unsigned l = 0; l < L; ++l) {
-      dmem_undirected[l] = dmem[l];
-      _(dmem_buffered[l], "resp") = _(dmem_undirected[l], "resp");
-      Buffer<1>(_(dmem_buffered[l], "req"), _(dmem_undirected[l], "req"));
-    }
-
-    Share(dmem_scratchpad, dmem_buffered);
-
-    Scratchpad<CLOG2(DUMMYCACHE_SZ)>(dmem_scratchpad);
-
-    TAP(dmem_scratchpad);
-
-    // Console I/O for FPGAs and simulation.
-    if (SOFT_IO || FPGA_IO) {
-      node wrConsole(_(_(dmem_scratchpad, "req"), "valid") &&
-                     _(_(dmem_scratchpad, "req"), "ready") &&
-                     _(_(_(dmem_scratchpad, "req"), "contents"), "wr") &&
-                     _(_(_(dmem_scratchpad, "req"), "contents"), "addr") ==
-                       Lit<ABITS>(0x80000000>>CLOG2(N/8)));
-
-      bvec<8> consoleVal(_(_(_(dmem_scratchpad, "req"), "contents"), "data")[0]);
-
-      if (SOFT_IO) {
-        static int val_consoleVal;
-        EgressInt(val_consoleVal, consoleVal);
-        EgressFunc([](bool x){
-          if (x) cout << (char)val_consoleVal;
-        }, wrConsole);
-        TAP(wrConsole);
-        TAP(consoleVal);
-      } else {
-        OUTPUT(wrConsole);
-        OUTPUT(consoleVal);
-      }
-    }
+  for (unsigned l = 0; l < L; ++l) {
+    ostringstream oss;
+    oss << "dmem_" << l;
+    Expose(oss.str(), dmem[l]);
   }
 
   Buffer<1>(out_buffered, out);
