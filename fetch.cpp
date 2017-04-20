@@ -13,9 +13,9 @@
 using namespace std;
 using namespace chdl;
 
-void Fetch(fetch_pred_t &out, sched_fetch_t &in, string romFile);
+void Fetch(fetch_pred_t &out, sched_fetch_t &in);
 
-void Fetch(fetch_pred_t &out, sched_fetch_t &in, string romFile) {
+void Fetch(fetch_pred_t &out, sched_fetch_t &in) {
   HIERARCHY_ENTER();
 
   out_mem_port<8, N/8, N - (NN - 3), WW> imem;

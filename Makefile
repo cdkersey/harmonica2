@@ -1,5 +1,5 @@
 CXXFLAGS += -std=c++11 -g #-O3
-LDLIBS += -lchdl -lchdl-module
+LDLIBS += -lchdl -lchdl-module -pthread
 
 h2: regfile.o h2.o alu.o exec.o fpu.o sched.o fetch.o mem.o muldiv.o branch.o \
     barrier.o

@@ -18,13 +18,13 @@ void Harmonica2();
 
 // The pipeline stages
 void Sched(sched_fetch_t &out, splitter_sched_t &in);
-void Fetch(fetch_pred_t &out, sched_fetch_t &in, string romFile);
+void Fetch(fetch_pred_t &out, sched_fetch_t &in);
 void PredRegs(pred_reg_t &out, fetch_pred_t &in, splitter_pred_t &wb);
 void GpRegs(reg_func_t &out, pred_reg_t &in, splitter_reg_t &wb);
 void Execute(splitter_sched_t&, splitter_pred_t&, splitter_reg_t&, reg_func_t&);
 
 // Implementations
-void Harmonica2(string romFile) {
+void Harmonica2() {
   HIERARCHY_ENTER();
 
   // Assemble the pipeline
@@ -37,7 +37,7 @@ void Harmonica2(string romFile) {
   splitter_reg_t xr;
 
   Sched(sf, xs);
-  Fetch(fp, sf, romFile);
+  Fetch(fp, sf);
   PredRegs(pr, fp, xp);
   GpRegs(rx, pr, xr);
   Execute(xs, xp, xr, rx);
@@ -54,8 +54,7 @@ void Harmonica2(string romFile) {
 
 int main(int argc, char **argv) {
   // Instantiate the processor
-  string romFile(argc == 1 ? "rom.hex" : argv[1]);
-  Harmonica2(romFile);
+  Harmonica2();
 
   // Optimize and simulate/dump netlist
   if (cycdet()) return 1;
