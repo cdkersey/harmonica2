@@ -180,7 +180,7 @@ void GpRegs(reg_func_t &out_buffered, pred_reg_t &in, splitter_reg_t &wb) {
   Flatten(_(_(_(out,"contents"),"rval"),"val2")) =
     Latch(Reg(!ready),Flatten(rval2));
 
-  Buffer<1>(out_buffered, out);
+  RegBuffer<0>(out_buffered, out);
 
   HIERARCHY_EXIT();
 }

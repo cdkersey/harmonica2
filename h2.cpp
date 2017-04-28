@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
   if (FPGA) {
     // Emit verilog
     ofstream vl("h2.v");
-    print_verilog("h2", vl);
+    print_verilog("h2", vl, true);
   }
 
   // Emit netlist

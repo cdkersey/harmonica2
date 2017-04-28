@@ -5,6 +5,7 @@
 #include <chdl/egress.h>
 #include <chdl/memreq.h>
 #include <chdl/loader.h>
+#include <chdl/sort.h>
 
 #include <chdl/counter.h>
 
@@ -16,6 +17,142 @@
 using namespace std;
 using namespace chdl;
 
+
+template<unsigned P, unsigned B, unsigned N, unsigned A, unsigned I,
+         unsigned BQ, unsigned NQ, unsigned AQ, unsigned IQ>
+  void Coalescer(vec<P, mem_port<B, N, A, I> > &p, mem_port<BQ, NQ, AQ, IQ> &q)
+{
+  const unsigned L = (BQ*NQ)/(B*N), LL = CLOG2(L);
+  
+  // Port buffers
+  vec<P, mem_req<B, N, A, I> > req;
+  for (unsigned i = 0; i < P; ++i)
+    RegBuffer<0>(req[i], _(p[i], "req"));
+
+  // Input signals
+  bvec<P> valid_in, wr_in;
+  vec<P, bvec<A> > addr_in;
+  vec<P, bvec<LL> > offset_in;
+  vec<P, bvec<B*N> > data_in;
+  vec<P, bvec<A - CLOG2((BQ*NQ)/(B*N))> > tag_in;
+
+  for (unsigned i = 0; i < P; ++i) {
+    valid_in[i] = _(req[i], "valid");
+    addr_in[i] = _(_(req[i], "contents"), "addr");
+    wr_in[i] = _(_(req[i], "contents"), "wr");
+    tag_in[i] = addr_in[i][range<LL,A-1>()];
+    offset_in[i] = addr_in[i][range<0,LL-1>()];
+    data_in[i] = Flatten(_(_(req[i], "contents"), "data"));
+  }
+  
+  // Line state
+  node valid, dirty;
+  bvec<A - CLOG2((BQ*NQ)/(B*N))> tag;
+  bvec<BQ*NQ> data;
+
+  // Control
+  node clear_valid, set_valid, clear_dirty, set_dirty;
+
+  valid = Wreg(clear_valid || set_valid, set_valid);
+  dirty = Wreg(clear_dirty || set_dirty, set_dirty);
+
+  // Hit/Miss logic
+  bvec<P> tag_match, hit, miss;
+  node any_miss = OrN(miss);
+  
+  for (unsigned i = 0; i < P; ++i) {
+    tag_match[i] = (tag == tag_in[i]);
+    hit[i] = tag_match[i] && valid && valid_in[i];
+    miss[i] = (!valid || !tag_match[i]) && valid_in[i];
+  }
+
+  // Downstream request gneration
+  node any_write_hit = OrN(hit & wr_in);
+  node do_read, waiting, read_resp;
+  node writeback = any_miss && dirty;
+  bvec<CLOG2(P)> current_miss = Log2(miss);
+  bvec<P> current_miss_1h = Zext<P>(Decoder(current_miss, any_miss));
+  bvec<A> miss_addr = Mux(current_miss, addr_in);
+  vec<L, bvec<B*N> > read_data;
+ 
+
+  _(_(q, "req"), "valid") = writeback || do_read;
+  _(_(_(q, "req"), "contents"), "wr") = writeback;
+  _(_(_(q, "req"), "contents"), "addr") =
+    Mux(writeback, Zext<AQ>(miss_addr[range<LL,A-1>()]), Zext<AQ>(tag));
+
+  set_dirty = any_write_hit;
+  clear_dirty = writeback && _(_(q, "req"), "valid") && _(_(q, "req"), "ready");
+
+  do_read = !waiting && !writeback;
+  read_resp = _(_(q, "resp"), "valid") && !_(_(_(q, "resp"), "contents"), "wr");
+  Flatten(read_data) = Flatten(_(_(_(q, "resp"), "contents"), "data"));
+  waiting = Wreg(do_read || read_resp, do_read);
+
+  set_valid = read_resp;
+  clear_valid = writeback || do_read;
+
+  tag = Wreg(read_resp, miss_addr[range<LL,A-1>()]);
+  Flatten(_(_(_(q, "req"), "contents"), "data")) = data;
+  _(_(_(q, "req"), "contents"), "mask") = ~Lit<NQ>(0);
+  
+  // Downstream response handling
+  _(_(q, "resp"), "ready") = Lit(1);
+
+  vec<L, bvec<B*N> > data_v;
+  for (unsigned i = 0; i < BQ*NQ; ++i) {
+    data_v[i/(B*N)][i%(B*N)] = data[i];
+  }
+
+  bvec<L> write;
+  vec<P, bvec<L> > wr_match_t;
+  vec<L, bvec<P> > wr_match;
+  vec<L, bvec<CLOG2(P)> > wr_port_sel;
+  for (unsigned i = 0; i < P; ++i)
+    wr_match_t[i] = Decoder(offset_in[i], hit[i] && wr_in[i]);
+  
+  for (unsigned i = 0; i < L; ++i) {
+    for (unsigned j = 0; j < P; ++j)
+      wr_match[i][j] = wr_match_t[j][i];
+    write[i] = OrN(wr_match[i]);
+    wr_port_sel[i] = Log2(wr_match[i]);
+    data_v[i] = Wreg(write[i] || read_resp,
+                  Mux(read_resp, Mux(wr_port_sel[i], data_in), read_data[i]));
+  }
+  
+  // Upstream connections
+  for (unsigned i = 0; i < P; ++i) {
+    _(req[i], "ready") = hit[i] && _(_(p[i], "resp"), "ready");
+    _(_(p[i], "resp"), "valid") = hit[i];
+    _(_(_(p[i], "resp"), "contents"), "id") =
+      _(_(_(p[i], "req"), "contents"), "id");
+    Flatten(_(_(_(p[i], "resp"), "contents"), "data")) =
+      Mux(offset_in[i], data_v);
+  }
+
+  #ifdef DEBUG_COALESCER
+  TAP(valid);
+  TAP(dirty);
+  TAP(tag);
+  TAP(data);
+  TAP(tag_match);
+  TAP(hit);
+  TAP(miss);
+  TAP(current_miss);
+  TAP(current_miss_1h);
+  TAP(miss_addr);
+  TAP(do_read);
+  TAP(waiting);
+  TAP(writeback);
+  TAP(addr_in);
+  TAP(tag_in);
+  TAP(offset_in);
+  TAP(data_in);
+  TAP(write);
+  TAP(wr_port_sel);
+  #endif
+}
+
 void Funcunit_lsu(func_splitter_t &out_buf, reg_func_t &in);
 
 // Register that is transparent during write; edge-triggered, but provides
@@ -23,6 +160,10 @@ void Funcunit_lsu(func_splitter_t &out_buf, reg_func_t &in);
 template <typename T> T TReg(node wr, const T &d) { 
   return Mux(wr, Wreg(wr, d), d);
 }
+
+#ifdef COALESCE_IMEM
+extern mem_port<8, N/8, N - (NN - 3), WW> *imem_p;
+#endif
 
 // Load/store unit
 void Funcunit_lsu(func_splitter_t &out_buffered, reg_func_t &in)
@@ -54,7 +195,22 @@ void Funcunit_lsu(func_splitter_t &out_buffered, reg_func_t &in)
   Counter("insts_st", lanes, store_inst);
 
   const unsigned ABITS(N - CLOG2(N/8));
+  #ifdef COALESCE
+  #ifdef COALESCE_IMEM
+  vec<L + 1, mem_port<8, N/8, ABITS, WW> > dmem;
+  Connect(_(dmem[L], "req"), _(*imem_p, "req"));
+  Connect(_(*imem_p, "resp"), _(dmem[L], "resp"));
+  #else
+  vec<L, mem_port<8, N/8, ABITS, WW> > dmem;
+  #endif
+  mem_port<MEM_B, MEM_N, MEM_A, MEM_I> dmem_c_nondir;
+  out_mem_port<MEM_B, MEM_N, MEM_A, MEM_I> dmem_c(dmem_c_nondir);
+
+  Coalescer(dmem, dmem_c_nondir);
+
+  #else
   vec<L, out_mem_port<8, N/8, ABITS, WW> > dmem;
+  #endif
   bvec<L> dmem_req_readys, dmem_resp_valids;
   vec<L, bvec<WW> > dmem_resp_wids;
 
@@ -165,13 +321,17 @@ void Funcunit_lsu(func_splitter_t &out_buffered, reg_func_t &in)
     IF(from_pending, Lsb(pending)).
     ELSE(Lsb(finished));
 
+  #ifdef COALESCE
+  EXPOSE(dmem_c);
+  #else
   for (unsigned l = 0; l < L; ++l) {
     ostringstream oss;
     oss << "dmem_" << l;
     Expose(oss.str(), dmem[l]);
   }
+  #endif
 
-  Buffer<1>(out_buffered, out);
+  RegBuffer<0>(out_buffered, out);
 
   HIERARCHY_EXIT();
 }

@@ -13,12 +13,22 @@
 using namespace std;
 using namespace chdl;
 
+#ifdef COALESCE_IMEM
+mem_port<8, N/8, N - (NN - 3), WW> *imem_p;
+#endif
+
 void Fetch(fetch_pred_t &out, sched_fetch_t &in);
 
 void Fetch(fetch_pred_t &out, sched_fetch_t &in) {
   HIERARCHY_ENTER();
 
+  #ifdef COALESCE_IMEM
+  imem_p = new mem_port<8, N/8, N - (NN - 3), WW>();
+  out_mem_port<8, N/8, N - (NN - 3), WW> imem(*imem_p);
+  #else
   out_mem_port<8, N/8, N - (NN - 3), WW> imem;
+  #endif
+
   out_mem_req<8, N/8, N - (NN - 3), WW> &req(_(imem, "req"));
   in_mem_resp<8, N/8, WW> &resp(_(imem, "resp"));
 
@@ -42,7 +52,9 @@ void Fetch(fetch_pred_t &out, sched_fetch_t &in) {
 
   _(_(out, "contents"), "ir") = Flatten(_(_(resp, "contents"), "data"));
 
+  #ifndef COALESCE_IMEM
   EXPOSE(imem);
+  #endif
 
   HIERARCHY_EXIT();
 }

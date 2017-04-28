@@ -19,16 +19,23 @@ void Sched(sched_fetch_t &out, splitter_sched_t &in);
 // Inject the initial warp
 void Starter(splitter_sched_t &out) {
   HIERARCHY_ENTER();
-  node firstCyc(Reg(Lit(0), 1));
 
-  _(out, "valid") = firstCyc;
+  #ifdef START_PORT
+  node start = Input("start");
+  bvec<N> initial_pc = Input<N>("initial_pc");
+  #else
+  node start(Reg(Lit(0), 1));
+  bvec<N> initial_pc = Lit<N>(0);
+  #endif
+
+  _(out, "valid") = start;
   // TODO: TS_KERNEL
   _(_(_(out, "contents"), "warp"), "state") = Lit<SS>(TS_USER);
-  _(_(_(out, "contents"), "warp"), "pc") = Lit<N>(0);
+  _(_(_(out, "contents"), "warp"), "pc") = initial_pc;
   _(_(_(out, "contents"), "warp"), "active") = Lit<L>(1);
   _(_(_(out, "contents"), "warp"), "id") = Lit<WW>(0);
 
-  ASSERT(!(firstCyc && !_(out, "ready")));
+  ASSERT(!(start && !_(out, "ready")));
   HIERARCHY_EXIT();
 }
 
@@ -65,7 +72,7 @@ void Sched(sched_fetch_t &out, splitter_sched_t &in) {
                             bvec<WARPSZ>(spawnWarp));
   _(_(buf_in, "contents"), "next_id") = _(spawnWarp, "id") + Lit<WW>(1);
 
-  Buffer<WW>(out, buf_in);
+  RegBuffer<WW>(out, buf_in);
   TAP(buf_in); TAP(in);
   TAP(spawnState);
   TAP(next_spawnState);
