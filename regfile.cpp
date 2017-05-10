@@ -2,6 +2,7 @@
 
 #include <chdl/chdl.h>
 #include <chdl/cassign.h>
+#include <chdl/submodule.h>
 
 #include "config.h"
 #include "interfaces.h"
@@ -35,6 +36,16 @@ void PredRegs(pred_reg_t &out, fetch_pred_t &in, splitter_pred_t &wb) {
 
   vec<L, vec<3, bvec<1> > > q;
 
+  #ifdef MODULE_REGFILE
+  module &pregs = Module("predicate_regfile");
+  pregs.inputs(rd_addr[0])(rd_addr[1])(rd_addr[2])(a_wb)(wb_mask)(wb_val);
+  for (unsigned i = 0; i < 3; ++i) {
+    bvec<L> ql;
+    for (unsigned j = 0; j < L; ++j)
+      ql[j] = q[j][i][0];
+    pregs.outputs(ql);
+  }
+  #else
   if (SRAM_REGS) {
     for (unsigned i = 0; i < L; ++i)
       q[i] = Syncmem(rd_addr, bvec<1>(wb_val[i]), a_wb, wb_mask[i]);
@@ -57,6 +68,7 @@ void PredRegs(pred_reg_t &out, fetch_pred_t &in, splitter_pred_t &wb) {
       q[l][2] = Reg(Mux(rd_addr[2], pregs[l]));
     }
   }
+  #endif
  
   bvec<L> pval0, pval1, pmask;
 
@@ -117,12 +129,28 @@ void GpRegs(reg_func_t &out_buffered, pred_reg_t &in, splitter_reg_t &wb) {
   a[0] = wid;
   a[1] = wb_wid;
 
+  #ifdef MODULE_REGFILE
+  module &regmod = Module("gp_regfile");
+  regmod.inputs(Cat(wid, inst.get_rsrc0()))
+               (Cat(wid, inst.get_rsrc1()))
+               (Cat(wb_wid, wb_dest))(wb_mask);
+
+  for (unsigned i = 0; i < L; ++i) regmod(wb_val[i]);
+
+  regmod.inputs(clone)(Cat(wb_wid, wb_clonesrc))(Cat(wb_wid, wb_clonedest));
+
+  for (unsigned i = 0; i < L; ++i) regmod.outputs(rval0[i]);
+  for (unsigned i = 0; i < L; ++i) regmod.outputs(rval1[i]);
+  #endif
+
   for (unsigned l = 0; l < L; ++l) {
     for (unsigned i = 0; i < R; ++i) {
       node wr(wb_mask[l] && wb_dest == Lit<RR>(i) ||
                 wb_clonedest == Lit<LL>(l) && clone);
       if (SRAM_REGS) {
+        #ifndef MODULE_REGFILE
         q[l][i] = Syncmem(a, Mux(Reg(clone), Reg(wb_val[l]), clonebus[i]), Reg(wb_wid), Reg(wr));
+        #endif
       } else {
         vec<W, bvec<N> > regs;
         for (unsigned w = 0; w < W; ++w) {
@@ -154,11 +182,13 @@ void GpRegs(reg_func_t &out_buffered, pred_reg_t &in, splitter_reg_t &wb) {
   }
 
 
+  #ifndef MODULE_REGFILE
   for (unsigned l = 0; l < L; ++l) {
     rval0[l] = Mux(Reg(inst.get_rsrc0()), q[l])[0];
     rval1[l] = Mux(Reg(inst.get_rsrc1()), q[l])[0];
     rval2[l] = Mux(Reg(inst.get_rsrc2()), q[l])[0];
   }
+  #endif
 
   TAP(rval0);
   TAP(rval1);

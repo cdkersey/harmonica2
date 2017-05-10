@@ -19,7 +19,7 @@ const unsigned W(16), // Total warps
 const unsigned WW(chdl::CLOG2(W)), RR(chdl::CLOG2(R)), LL(chdl::CLOG2(L)),
                NN(chdl::CLOG2(N));
 
-const bool SRAM_REGS(false),  // Use SRAM for register files
+const bool SRAM_REGS(true),  // Use SRAM for register files
            FPGA(true),       // Produce Verilog netlist for FPGA
            FPGA_IO(false),   // Console output from DummyCache
            FPU(false);       // Floating point operations
@@ -27,5 +27,6 @@ const bool SRAM_REGS(false),  // Use SRAM for register files
 #define COALESCE
 #define COALESCE_IMEM
 #define START_PORT
+#define MODULE_REGFILE
 
 #endif
